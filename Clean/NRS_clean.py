@@ -1,11 +1,9 @@
 from ind2mass import * # VSEA
 from math import pi as PI
 
-def NRS(N, n, pi, iterCols=None, iterInCol=10000, tol=TOL):
+def NRS(n, pi, iterCols=None, iterInCol=10000, tol=TOL):
 	'''
 	INPUT:
-		N :: Integer
-			# population size
 		n :: Integer
 			# number of bins
 		pi :: NPArray<Float>

@@ -1,5 +1,4 @@
-from ind2mass import listMatch, TOL, genStat, stochTest
-from scipy.stats import truncnorm
+from VSEA_clean import listMatch, TOL, genStat, stochTest
 import numpy as np
 
 
@@ -50,4 +49,23 @@ def corrEv_m(mat, tol=TOL):
 		if abs(info[0][i] - 1.0) < tol:
 			ev = info[1][:,i]
 			return ev/sum(ev)
+
+
+def devectorize(vm, bins):
+	'''
+	INPUT:
+		vm :: NPArray<Float>
+			# bins^2-length vectorized P^I
+		bins :: Integer
+			# the number of bins
+	OUTPUT:
+		NPArray<NPArray<Float>>
+			# devectorized vm as bins-x-bins-matrix
+	'''
+	output = np.zeros([bins, bins])
+	col = 0
+	for i in xrange(0, len(vm), bins):
+		output[:,col] = vm[i:i+bins]
+		col += 1
+	return output
 

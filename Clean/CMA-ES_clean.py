@@ -1,5 +1,5 @@
 import numpy as np
-from ind2mass import stochTest
+from VSEA_clean import stochTest
 import cma
 
 N = 3; n = 2 # people, bins
