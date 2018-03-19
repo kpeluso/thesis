@@ -1,8 +1,6 @@
-
-import numpy as np
+from HELPERS_clean import np, listMatch, stochTest
 from scipy.special import comb
 from copy import deepcopy
-from ind2mass import listMatch, stochTest
 
 #
 # Source: (2nd answer in link)

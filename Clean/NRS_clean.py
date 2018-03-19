@@ -1,5 +1,4 @@
-from ind2mass import * # VSEA
-from math import pi as PI
+from HELPERS_clean import TOL, np, listMatch
 
 def NRS(n, pi, iterCols=None, iterInCol=10000, tol=TOL):
 	'''

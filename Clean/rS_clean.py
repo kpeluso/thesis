@@ -1,6 +1,6 @@
-from HELPER-MODULE import *
+from HELPERS_clean import TOL, np, resMat, corrEv, p22p1, genStat, listMatch
 
-def rS(N, n, pi, iters=20000, tol=TOL):
+def rS(n, pi, iters=20000, tol=TOL):
 	'''
 	INPUT:
 		N :: Integer

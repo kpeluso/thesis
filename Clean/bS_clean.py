@@ -1,6 +1,6 @@
-from HELPER-MODULE import *
+from HELPERS_clean import np, listMatch, resMat, corrEv, p22p1
 
-def bS(N, n, pi, iters=2000, tol=TOL):
+def bS(n, pi, iters=2000):
 	'''
 	INPUT:
 		N :: Integer

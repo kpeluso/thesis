@@ -1,7 +1,7 @@
-from HELPER-MODULE import *
+import numpy as np
 from scipy.optimize import linprog
 
-def LP(n,pi):
+def LP(n, pi):
     '''
 	INPUT:
 		n :: Integer
@@ -24,8 +24,10 @@ def LP(n,pi):
         M[i,:] += np.array([0]*(i*n) + pi_l + [0]*(n**2-i*n-n))
     # constraint 2 - Sum(P^(I)[:,j]) == 1 for all j=1:n
     for i in xrange(n,2*n):
-        M[i,:] += np.array([0]*(i*n) + [1]*n + [0]*(n**2-i*n-n))
+        M[i,:] += np.array([0]*((i-n)*n) + [1]*n + [0]*(n**2-(i-n)*n-n))
     # constraint 3 - P^(I)[i,j] >= 0 for all i,j=1:n (nonnegativity constraints)
     bounds = [(0.0,1.0)]*n**2
-    return linprog(c, A_ub=M, b_ub=pi, bounds=bounds)
+    # Mx = b
+    b = pi_l + [1]*n
+    return linprog(c, A_ub=M, b_ub=b, bounds=bounds)
 

@@ -1,6 +1,7 @@
-from HELPER-MODULE import *
+from HELPERS_clean import TOL, np, corrEv, genStat, listMatch
+from brS_clean import brS
 
-def gibbs(N, n, pi, iters=20000, tol=TOL):
+def GI(n, pi, iters=20000, tol=TOL):
 	'''
 	INPUT:
 		N :: Integer
@@ -33,7 +34,7 @@ def gibbs(N, n, pi, iters=20000, tol=TOL):
 		# s3, normalize
 		subpi /= sum(subpi)
 		# s4, optimize (perhaps try again with Binary Search on 2x2)
-		submat = brS(N, n, subpi) # !!! Use bS, rS, brS methods. !!!
+		submat = brS(n, subpi) # !!! Use bS, rS, brS methods. !!!
 		# s5a, denormalize
 		submat[:,0] *= resMass_mat[0]
 		submat[:,1] *= resMass_mat[1]

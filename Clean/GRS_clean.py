@@ -1,7 +1,6 @@
-from ind2mass import *
-from math import pi as PI
+from HELPERS_clean import np, TOL, listMatch
 
-def GRS(N, n, pi, maxIters=n*10000, tol=TOL):
+def GRS(n, pi, maxIters=None, tol=TOL):
 	'''
 	INPUT:
 		N :: Integer
