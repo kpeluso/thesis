@@ -1,5 +1,5 @@
 import numpy as np
-
+from scipy.special import comb
 
 TOL = 0.001
 
@@ -8,6 +8,8 @@ p22p1 = lambda p2,pi: 1.0 - (1.0 - p2)*(pi[1]/pi[0]) # proof of formula given in
 vect = lambda mat: [mat[0][0], mat[1][0], mat[0][1], mat[1][1]]
 
 next_term = lambda a,b: (b-a)*np.random.random() # b >= a
+
+wc_count = lambda n,k: int(comb(n+k-1,k-1)) # count total number of wcs, n=balls, k=boxes
 
 
 def resMat(mat):

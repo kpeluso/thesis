@@ -1,19 +1,5 @@
-from HELPERS_clean import np, listMatch, stochTest
-from scipy.special import comb
+from HELPERS_clean import np, listMatch, stochTest, wc_count, weak_compositions, comb
 from copy import deepcopy
-
-#
-# Source: (2nd answer in link)
-#  https://stackoverflow.com/questions/4647120/next-composition-of-n-into-k-parts-does-anyone-have-a-working-algorithm
-#
-def weak_compositions(balls, boxes, parent=tuple()):
-	if boxes > 1:
-		for i in xrange(balls + 1):
-			for x in weak_compositions(i, boxes - 1, parent + (balls - i,)):
-				yield x
-	else:
-		yield parent + (balls,)
-
 
 def bounded_wcs(balls, boxes, minBalls, maxBalls, currBox=0, parent=tuple(), first=True, iters=0):
 	'''
@@ -86,10 +72,7 @@ def p_wc(ls, n, initial_maxs, initial_output=[], currIdx=0):
 				yield x
 
 
-wc_count = lambda n,k: int(comb(n+k-1,k-1)) # count total number of wcs, n=balls, k=boxes
-
-
-def ind2mass_genseries(N, n, indMat):
+def Series(N, n, indMat):
 	'''
 	INPUT:
 		N :: Integer
@@ -126,3 +109,4 @@ def ind2mass_genseries(N, n, indMat):
 		i += 1
 		print 100.0*float(i)/float(sl), '%' # progress output
 	return output
+

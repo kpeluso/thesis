@@ -46,7 +46,7 @@ def allotCombos(st, leavs, ents):
 	return output
 
 
-def ind2mass_nU(N, n, indMC): # non-unique, identity-less individuals
+def VSEA(N, n, indMC): # non-unique, identity-less individuals
 	'''
 	INPUT:
 		N :: Integer
