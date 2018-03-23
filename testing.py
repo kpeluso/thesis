@@ -10,6 +10,30 @@ from ind2mass import *
 
 print '\nTESTING:\n'
 
+# COPY AND PASTE THIS FOR QUICK, IN-FILE TESTING:
+
+# ans = GRS(3,np.array([.3,.3,.4]))
+# print 'ans', ans
+# ans2 = np.linalg.eig(ans)
+# print 'ans2[0]', ans2[0]
+# print 'eig vects:'
+# print ans2[1][:,0]/sum(ans2[1][:,0])
+# print ans2[1][:,1]/sum(ans2[1][:,1])
+# print ans2[1][:,2]/sum(ans2[1][:,2])
+#
+# print '\n\n'
+#
+# ans = GRS(4,np.array([.2,.5,.2,.1]))
+# print 'ans', ans
+# ans2 = np.linalg.eig(ans)
+# print 'ans2[0]', ans2[0]
+# print 'eig vects:'
+# print ans2[1][:,0]/sum(ans2[1][:,0])
+# print ans2[1][:,1]/sum(ans2[1][:,1])
+# print ans2[1][:,2]/sum(ans2[1][:,2])
+# print ans2[1][:,3]/sum(ans2[1][:,3])
+
+
 # print 'timeRev:'
 # for i in xrange(5):
 # 	out = genTimeRev(i+1)

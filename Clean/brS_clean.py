@@ -1,6 +1,6 @@
 from HELPERS_clean import np, TOL, listMatch, resMat, corrEv, p22p1, next_term
 
-def brS(n, pi, iters=20000):
+def brS(n, pi, iters=50000):
 	'''
 	INPUT:
 		N :: Integer
@@ -34,3 +34,4 @@ def brS(n, pi, iters=20000):
 			ev = corrEv(output)
 			iters -= 1
 	return output
+

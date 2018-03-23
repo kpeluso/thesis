@@ -49,6 +49,7 @@ def CMAES(n, pi, tol=10.0*TOL):
 	preFit = lambda x: corrEig(x, pi, n, tol)
 	fitnessFunction = lambda x: f.fun_as_arg(x, preFit)
 	output = cma.fmin(fitnessFunction, x0, sigma0)
+	print output
 	print '\n'
 	return devectorize(output[5], n) # incumbent solution found at this entry in output array
 
