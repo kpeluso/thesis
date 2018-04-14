@@ -1,6 +1,6 @@
 from HELPERS_clean import np, TOL, listMatch, corrEv
 
-def GRS(n, pi, maxIters=None, tol=TOL/10.0):
+def GRS(n, pi, maxIters=float('inf'), tol=TOL):
 	'''
 	INPUT:
 		N :: Integer

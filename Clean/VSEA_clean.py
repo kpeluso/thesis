@@ -72,6 +72,7 @@ def VSEA(N, n, indMC): # non-unique, identity-less individuals
 	#
 	i = 0 # current row index
 	for Ti in weak_compositions(N, n): # rows of mass matrix
+		print 'Progress:', 100.0*float(sl*i)/float(sl**2), '%'
 		j = 0 # current column index
 		for Tj in weak_compositions(N, n): # columns of mass matrix
 			#

@@ -1,6 +1,6 @@
-from HELPERS_clean import np, listMatch, resMat, corrEv, p22p1
+from HELPERS_clean import TOL, np, listMatch, resMat, corrEv, p22p1
 
-def bS(n, pi, iters=2000):
+def bS(n, pi, iters=float('inf'), tol=TOL):
 	'''
 	INPUT:
 		N :: Integer
@@ -21,7 +21,7 @@ def bS(n, pi, iters=2000):
 	b2 = 1.0
 	output[1][1] = np.average([b1,b2])
 	output = resMat(output)
-	while not listMatch(np.dot(output, ev), pi) and iters > 0: # s1, loop
+	while not listMatch(np.dot(output, ev), pi, tol=tol) and iters > 0: # s1, loop
 		if ev[1] < pi[1]:
 			b1 = np.average([b1,b2])
 			output[1][1] += np.average([b1,b2])-b1

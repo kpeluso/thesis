@@ -1,7 +1,8 @@
 import numpy as np
+from HELPERS_clean import TOL, devectorize, normize, listMatch
 from scipy.optimize import linprog
 
-def LP(n, pi):
+def LP(n, pi, tol=TOL):
     '''
 	INPUT:
 		n :: Integer
@@ -26,8 +27,18 @@ def LP(n, pi):
     for i in xrange(n,2*n):
         M[i,:] += np.array([0]*((i-n)*n) + [1]*n + [0]*(n**2-(i-n)*n-n))
     # constraint 3 - P^(I)[i,j] >= 0 for all i,j=1:n (nonnegativity constraints)
-    bounds = [(0.0,1.0)]*n**2
+    #   0<p<1 for all parameters since we don't want Identity Matrix as output
+    bounds = [(TOL,1.0-TOL)]*n**2
     # Mx = b
     b = pi_l + [1]*n
-    return linprog(c, A_ub=M, b_ub=b, bounds=bounds)
+    output = linprog(c, A_ub=M, b_ub=b, bounds=bounds, method='interior-point')
+    # print '\noutput', output
+    # print 'output[x]', output['x']
+    # print len(c), c
+    # print len(M), M
+    # print len(b), b
+    # print len(bounds), bounds
+    # print ' '
+    # print '\nMatch?:', listMatch(np.dot(normize(devectorize(list(output['x']), n)), pi), pi, tol=TOL)
+    return normize(devectorize(output['x'], n))
 

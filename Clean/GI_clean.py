@@ -1,7 +1,7 @@
 from HELPERS_clean import TOL, np, corrEv, genStat, listMatch
 from brS_clean import brS
 
-def GI(n, pi, iters=20000, tol=TOL):
+def GI(n, pi, iters=float('inf'), tol=TOL):
 	'''
 	INPUT:
 		n :: Integer

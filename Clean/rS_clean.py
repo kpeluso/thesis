@@ -1,6 +1,6 @@
 from HELPERS_clean import TOL, np, resMat, corrEv, p22p1, genStat, listMatch
 
-def rS(n, pi, iters=50000, tol=TOL):
+def rS(n, pi, iters=float('inf'), tol=TOL):
 	'''
 	INPUT:
 		N :: Integer
@@ -23,7 +23,7 @@ def rS(n, pi, iters=50000, tol=TOL):
 	b2 = 1.0
 	output[1][1] = np.average([b1,b2])
 	output = resMat(output)
-	while not listMatch(np.dot(output, ev), pi) and iters > 0: # s1, loop
+	while not listMatch(np.dot(output, ev), pi, tol=tol) and iters > 0: # s1, loop
 		output[1][1] = (b2-b1)*np.random.random()+b1
 		output[0][0] = p22p1(output[1][1], pi) # calculate p_11
 		output = resMat(output) # calculate p_12, p_21
