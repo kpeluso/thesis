@@ -1,0 +1,1689 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+% My packages
+\usepackage{fullpage}
+\usepackage[top=2cm, bottom=4.5cm, left=2.5cm, right=2.5cm]{geometry}
+\usepackage{amsmath,amsthm,amsfonts,amssymb,amscd}
+\usepackage{lastpage}
+\usepackage{enumerate}
+\usepackage{mathtools}
+\usepackage{fancyhdr}
+\usepackage{mathrsfs}
+\usepackage{listings}
+\usepackage{bm}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{courier}
+\usepackage[]{algorithm2e}
+\usepackage{tikz}
+\usetikzlibrary{automata, positioning}
+%% download this package and put it in the same directory as this file
+\usepackage{clrscode3e}
+\setlength{\parindent}{0.0in}
+\setlength{\parskip}{0.05in}
+
+\setcounter{secnumdepth}{3}
+
+\newtheorem{defn}{Definition}
+\newtheorem{Theorem}{Theorem}
+
+\usepackage{mathtools}
+\DeclarePairedDelimiter\abs{\lvert}{\rvert}
+\DeclarePairedDelimiter\norm{\lVert}{\rVert}
+\DeclarePairedDelimiter\ceil{\lceil}{\rceil}
+\DeclarePairedDelimiter\floor{\lfloor}{\rfloor}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Python
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Default fixed font does not support bold face
+\DeclareFixedFont{\ttb}{T1}{txtt}{bx}{n}{9} % for bold
+\DeclareFixedFont{\ttm}{T1}{txtt}{m}{n}{9}  % for normal
+% Custom colors
+\usepackage{color}
+\definecolor{deepblue}{rgb}{0,0,0.5}
+\definecolor{deepred}{rgb}{0.6,0,0}
+\definecolor{deepgreen}{rgb}{0,0.5,0}
+\usepackage{listings}
+% Python style for highlighting
+\newcommand\pythonstyle{\lstset{
+language=Python,
+basicstyle=\ttm,
+otherkeywords={self}, % Add keywords here !!!!!***!!!!!
+keywordstyle=\ttb\color{deepblue},
+emph={MyClass,__init__}, % Custom highlighting
+emphstyle=\ttb\color{deepred}, % Custom highlighting style
+stringstyle=\color{deepgreen},
+frame=tb, % Any extra options here
+showstringspaces=false %
+}}
+
+% Python environment
+\lstnewenvironment{python}[1][]
+{
+\pythonstyle
+\lstset{#1}
+}
+{}
+% Python for external files
+\newcommand\pythonexternal[2][]{{
+\pythonstyle
+\lstinputlisting[#1]{#2}}}
+% Python for inline
+\newcommand\pythoninline[1]{{\pythonstyle\lstinline!#1!}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Bibliography
+%\usepackage[backend=biber,style=alphabetic,sorting=ynt]{biblatex}
+\usepackage[backend=biber,style=alphabetic,sorting=ynt]{biblatex}
+\addbibresource{mybib.bib}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\title{Ensuring Efficient Convergence to a Given Stationary Distribution}
+\author{Kenneth Peluso}
+\date{September 2017 - April 2018}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+   How may we find a transition matrix that guarantees the long-run convergence of a Markov Chain to a given stationary distribution? Solving for this (usually) undetermined system is non-trivial and presents unique computational challenges. We begin to tackle this issue by reviewing Markov Chains and related definitions. Eight different of methods of directly solving for a transition matrix are presented along with their limitations. Relaxations of the two assumptions - the Identityless and Independence Assumptions - underlying these direct methods are considered. Two methods of generating a Mass Matrix - the transition matrix underlying hops between entire population states - are described while developing the notion of successively-bounded weak compositions and describing an algorithm for their exhaustive generation. Applications of some methods are provided with respect to optimizing firm profit via optimally distributing workers among wage bracket and optimizing measures of national wealth via manipulation of class distribution, economic inequality and immigration policy.
+\end{abstract}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\section{Introduction}
+Given a set of finite bins, a finite population to be allocated among the bins, and an objective function that is optimized on some set of population distributions across the bins, conventional optimization practices fall short of pragmatic. Integer programming and other methods may yield an optimal population distribution, but how may we guarantee that the population converges to such an optimal distribution? This paper attempts to answer that question.
+
+At least one optimal distribution is assumed to exist and be calculated. One of these distributions is selected and normalized to 1. We assert that this distribution, a discrete probability distribution, is a stationary distribution for some Markov Chain. This Markov Chain is assumed to provide a complete, probabilistic description of the evolution of this population. Our goal is to define that Markov Chain. In particular, we seek to find a transition matrix, the \textit{Individual Matrix}, whose first eigenvector (i.e. the eigenvector corresponding to an eigenvalue of 1) is the asserted stationary distribution.
+
+For $n>2$, this is an underdetermined problem - there exist far more variables than constraints. These variables are the elements of the desired transition matrix. The few constraints available to us consist of a system of linear equations arising from the matrix multiplication between the transition matrix and its stationary distribution, in addition to the requirement that all columns of the transition matrix must sum to 1 (i.e. that all columns of the transition matrix are probability distributions). Due to the underdetermined nature of the problem, many transition matrix solutions may exist, but finding them is nontrivial.
+
+We begin by clearly listing all preliminary definitions, as the literature concerning Markov Chains is ripe with inconsistencies between papers. The general problem is then clearly restated along with its assumptions. Methods of directly finding a solution given these assumptions are presented. Some methods admittedly perform better than others, but all are presented regardless. Those which require no more than 2 bins are detailed first, those lacking that requirement follow. A brief aside regarding the performance of each algorithm accompanies its description and pseudocode.
+
+As the paper continues, we relax the 2 core assumptions while providing motivation for a much more complex and tangentially related problem - that of finding the \textit{Mass Matrix}, to be defined later. To generate this matrix, new definitions are required, in particular, we must generalize slightly beyond the restricted weak compositions of primary concern in Page 2012 \cite{Page2012}. Algorithms comparable to those in Page 2012 are created to generate instances of this new definition, of \textit{successively-bounded weak compositions}.
+
+We continue by surveying some applications of our methods used to directly solve for the Individual Matrix. We discuss methods to ensure optimal convergence of...
+
+\begin{itemize}
+    \item the distribution of citizens in a society among income brackets to maximize GDP or overall welfare.
+    \item the distribution of employees in a firm among wage brackets to maximize the firm's profit.
+    \item the distribution of citizens among economic classes to an ideal level of inequality in a nation.
+    \item the genetic diversity of a nation to an ideal level to maximize income-per-capita.
+\end{itemize}
+
+For these applications, we reassert the two core assumptions -- the Identityless and Independence Assumptions. The latter two applications build off of the work of Oded Galor and his colleagues, and connections are drawn between their previous work and this new material. A generalization of all possible applications concludes the application section.
+
+The paper concludes with a summary of all that has been discussed and suggestions for future research.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\section{Definitions}
+The literature on applied probability models is ripe with notation that is inconsistent across texts, thus it is important to agree on a common language from the very beginning.
+
+\begin{defn}[Markov Chain (MC)]
+    A stochastic process $X = (X_i)_{i=1:k}$ with state space $S = {1,2,3,...}$ is a Markov Chain (MC) if it satisfies the Markov Property i.e. if for all $n \in \mathbb{N}$ and all states $i_1,i_2,...i_n$ it follows that
+
+    \[
+    P(X_n=i_n | X_{n-1}=i_{n-1}, X_{n-2}=i_{n-2}, ..., X_1 = i_1) = P(X_n=i_n | X_{n-1}=i_{n-1})
+    \]
+\end{defn}
+
+\cite{IowaThesis}
+
+In this paper, we only consider \textit{homogeneous} MCs of discrete times, where the probability of hopping between states is fixed with respect to time.
+
+The matrix that fully describes the MC is called the \textit{transition matrix P}. If the state space of the MC is $n$, then $P$ is an $n \times n$ matrix. $p_{ij}$ is an element in $P$ found at the intersection of row $i$ and column $j$ and is the probability that $X_t = i$ given that $X_{t-1} = j$.
+
+\begin{defn}[Irreducible MC]
+    An MC with state space $S$ is irreducible if $\forall C \in S, \exists p_{ij} > 0 \ni i \in C, j \notin C$.
+\end{defn}
+
+In other words, it is possible to reach one state in $S$ from any other state in $S$ in an irreducible MC. An MC that is not irreducible is called \textit{reducible}.
+
+\begin{defn}[Aperiodic MC]
+    An MC with state space $S$ and transition matrix $P$ is aperiodic if all states in $S$ are aperiodic i.e. when $\forall i \in S, \texttt{gcd}(C) = 1$ where $C = \{t \in \mathbb{N} | p^{(t)}_{ii} > 0\}$, \texttt{gcd}$(C)$ is the greatest common divisor of the elements in set $C$ and $p^{(t)}_{ii}$ is the element in matrix $P^t$ at row $i$, column $i$. \cite{IowaThesis}
+\end{defn}
+
+Loosely put, an aperiodic MC allows all states in $S$ to be returned to be realized multiple times over as the number of time steps increases indefinitely. Furthermore, the lengths of elements in the set of possible ways to return to each state, starting from that state, vary or is 1 if there is only 1 path from one state to itself, namely the path $i \rightarrow i$ where $i \in S$.
+
+As we will see, forcing our solution transition matrix to have a stationary distribution will force it to to be irreducible, but not necessarily aperiodic.
+
+\begin{defn}[Recurrent (Persistent)]
+    For a homogeneous MC, a state $j$ is recurrent (or persistent) if
+    \[
+    \sum^{\infty}_{t=1} f_{jj}^{(t)} = 1
+    \]
+\end{defn}
+
+\cite{IowaThesis}
+
+In other words, if in some, perhaps infinite time, the MC can return to any state it starts at.
+
+\begin{defn}[Positive Recurrent]
+    For a homogeneous MC, a state $j$ is positive recurrent if it is recurrent and if
+    \[
+    \sum^{\infty}_{t=1} tf_{jj}^{(t)} < \infty
+    \]
+\end{defn}
+
+\begin{defn}[Null Recurrent]
+    For a homogeneous MC, a state $j$ is null recurrent if it is recurrent and if
+    \[
+    \sum^{\infty}_{t=1} tf_{jj}^{(t)} = \infty
+    \]
+\end{defn}
+
+\cite{IowaThesis}
+
+Furthermore, in a finite, homogeneous MC, all recurrent states are positive recurrent. \cite{IowaThesis}
+
+\begin{defn}[Ergodic]
+    Let $P$ be the $n \times n$ transition matrix for a homogeneous MC and let $\pi$ be some $n \times 1$ vector of positive entries. If $\lim_{t\to\infty} p^{(t)}_{ij} = \pi_j$ for all $j$ independently of $i$ and $\sum^n_{j=1} \pi_j = 1$ then the MC is ergodic and $\pi$ is called the stationary distribution of the MC. \cite{IowaThesis}
+\end{defn}
+
+It should be noted that the stationary distribution of an MC with transition matrix $P$ is the first eigenvector of $P$, as in, it corresponds to the largest eigenvalue of $P$, which must be 1.
+
+Furthermore, ergodicity exhibits the following two necessary conditions:
+\begin{enumerate}
+  \item All recurrent states are aperiodic.
+  \item There is at most one irreducible closed subset of recurrent states.
+\end{enumerate}
+
+\cite{IowaThesis}
+
+Therefore, if we assert the existence of a single stationary distribution for an MC, then that MC must be ergodic and therefore all of its recurrent states are aperiodic and there is at most one irreducible closed subset of recurrent states.
+
+\begin{Theorem}[Fundamental Limit Theorem for Markov Chains]
+    For any irreducible, aperiodic MC with entirely positive recurrent states, then there exists a unique stationary distribution. \cite{limitThm}
+\end{Theorem}
+
+There are two different twists to this theorem. If we drop the aperiodic assumption, then we'll still have a unique stationary distribution but we may not observe convergence to it. If we drop the irreducible assumption, then we will have a set of stationary distributions, and we may observe convergence to any elements of that set or convex combinations of any number of elements int that set. Therefore, when we say that or force a matrix to have at least one stationary distribution, we force it to be aperiodic, but not necessarily irreducible. Thus, our solutions may only sometimes be ergodic. This will matter later in the paper after we discuss mass MCs.
+
+We will list one more definition for now. The following definition will arise during our discussion on mass matrices toward the end of this paper:
+
+\begin{defn}[Weak Composition]
+    Let \textnormal{\texttt{WC}}($N,n$) denote the set of all possible weak combinations of $N$ identical balls and $n$ unique bins. A Weak Combination $w \in $ \textnormal{\texttt{WC}}($N,n$) is any $n$-length list of non-negative integers that sums to $N$.
+\end{defn}
+
+\cite{weakComps}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\section{Problem Definition}
+Given a population of $N$ individuals, a set of $n$ bins, each with an associated value function dependent only on the number of people in the corresponding bin (i.e. nodal functions), an overall welfare function that we wish to optimize that takes all nodal function as input (i.e. welfare function), our task is to find some homogeneous transition matrix governing how each individual hops about each bin at each time step. We'll call this the \textit{individual transition matrix}, $\mathbb{P}^{(I)}$. For now, we assume that all individuals are non-unique - the \textit{Identityless Assumption}. Therefore, all individuals abide by the same $\mathbb{P}^{(I)}$.
+
+We will impose one more assumption, namely that any individual, regardless of their current bin-placement, cannot affect the movement of any other individual - the \textit{Independence Assumption}.
+
+Given these assumptions let us delve deeper into the meaning of $\mathbb{P}^{(I)}$. Consider the following generalized $\mathbb{P}^{(I)}$:
+
+\[
+\begin{bmatrix}
+    p_{11} & p_{12} & \cdots & p_{1n} \\
+    p_{21} & p_{22} & \cdots & p_{2n} \\
+    \vdots & \vdots & \ddots & \vdots \\
+    p_{n1} & p_{n2} & \cdots & p_{nn}
+\end{bmatrix}
+\]
+
+What do each of these $p_{ij}$ values mean? Each is the probability of any single individual hopping from bin $j$ to bin $i$. We assume that every individual abides by this same $\mathbb{P}^{(I)}$ (courtesy of the Identityless Assumption) and that the movements and placements of individuals do not affect those of other individuals (courtesy of the Independence Assumption). Therefore, under these two, core assumptions, we may completely describe the evolution of our population once we obtain $\mathbb{P}^{(I)}$. We must now find a means (or multiple means) of solving for this $\mathbb{P}^{(I)}$.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\section{Finding $\mathbb{P}^{(I)}$ Directly when $n=2$}
+In this section, we survey multiple means of directly calculating a $\mathbb{P}^{(I)}$ when $n=2$, namely bS, rS, and brS. Aside from working well when $n=2$, all the following methods will become important in the Gibbs-Inspired Method, which can tolerate situations where $n>2$.
+
+We must first begin with a derivation, atop of which we will construct our 3 ``$n=2$''-case methods. Let us begin by setting $n=2$. Then Equation (\ref{eq:1}) is a system of 2 linear equations with 2 unknowns, namely elements $p_{11}$ and $p_{22}$ of $\mathbb{P}^{(I)}$. These equations are:
+
+\[
+p_{11}\pi_1 + (1-p_{22})\pi_2 = \pi_1
+\]\[
+(1-p_{11})\pi_1 + p_{22}\pi_2 = \pi_2
+\]
+first equation becomes:
+\[
+p_{11} = 1 - (1-p_{22})\frac{\pi_2}{\pi_1}
+\]
+plug that into second equation:
+\[
+(1-1 + (1-p_{22})\frac{\pi_2}{\pi_1})\pi_1 + p_{22}\pi_2 = \pi_2
+\]\[
+(1-p_{22})\pi_2 + p_{22}\pi_2 = \pi_2
+\]
+
+and we arrive at a tautology! As a result of the constraints requiring our columns to be distributions (and thus sum to 1), our first two equations were essentially the same. We can thus sample $p_{22}$ randomly and obtain values from the following line to find a solution:
+
+\begin{equation}\label{eq:2}
+   p_{11} = 1 - (1-p_{22})\frac{\pi_2}{\pi_1}
+\end{equation}
+
+but we must only accept values of $p_{11} \geq 0$ from this line, so we must impose the following constraint:
+
+\begin{equation}\label{eq:3}
+    0 \leq p_{11} \Rightarrow p_{22} \geq 1-\frac{\pi_1}{\pi_2}
+\end{equation}
+
+We will rely on both Equation (\ref{eq:2}) and Constraint (\ref{eq:3}) heavily in upcoming algorithms.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Binary Search (bS) for $n=2$ Case}
+%%%%%%%%%%%%%%%%\
+\subsubsection{Description}
+We will be taking full advantage of (\ref{eq:2}) and (\ref{eq:3}). Again, this method only applies when $n=2$. Let $n=2$ and let \texttt{ev}() be a function that inputs a matrix and outputs its eigenvector corresponding to an eigenvalue of 1. Let \texttt{avg}() take a list of numbers as input and output their average. We may now adapt the classic Binary Search algorithm for our purposes.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Algorithm}
+1. If $\pi_1 \geq \pi_2$ :
+
+\hspace{1cm} $b_1 \coloneqq 0$
+
+\hspace{4mm}Else:
+
+\hspace{1cm}$1-\frac{\pi_1}{\pi_2}$
+
+2. $b_2 \coloneqq 1$ ; $iters \coloneqq 2000$ ; $output \coloneqq $
+$\begin{bmatrix}
+    x_{11}       & 1-p \\
+    1-x_{11}       & p \\
+\end{bmatrix}$
+
+\hspace{4mm}where $p = \texttt{avg}([b_1, b_2]), x_{11} \sim U[0,1]$
+
+3. While $output*\texttt{ev}(output) \neq \pi$ and $iters > 0$:
+
+4. \hspace{1cm} If $\texttt{ev}(output)_2 < \pi_2$ :
+
+5. \hspace{2cm} $b_1 \coloneqq \texttt{avg}([b_1, b_2])$
+
+6. \hspace{2cm} $output_{22} \mathrel{+}= \texttt{avg}([b_1, b_2])-b_1$
+
+7. \hspace{1.4cm} Else:
+
+8. \hspace{2cm} $b_2 \coloneqq \texttt{avg}([b_1, b_2])$
+
+9. \hspace{2cm} $output_{22} \mathrel{-}= \texttt{avg}([b_1, b_2])-b_1$
+
+10. \hspace{1cm} $output_{11} \coloneqq 1 - (1-output_{22})\frac{\pi_2}{\pi_1}$
+
+11. \hspace{1cm} $iters \mathrel{-}= 1$
+
+12. Return $output$
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Performance}
+The worst case cost for implementing bS is $O(F(d)log_2(d))$, where $F(d)$ is the cost of calculating with arithmetic operations with $d$-digit precision. It should be noted that $d$ in practice is determined by the threshold one may use to determine if 2 floating-point numbers are equal in addition to the user's machine and programming language.
+
+\begin{proof}
+    Let $x$ is the most number of times we can bisect a number, $d$. We are always bisecting our search space of $d$ in half, so:
+
+    \[
+    1 = d / 2^x \Rightarrow log_2(d) = x
+    \]
+
+    Furthermore, if any $d$-precision arithmetic operation costs $F(d)$ units, then the worst-cost cost incurred is $xF(d)$. Thus, the worst-case runtime of bS is $O(F(d)log_2(d))$.
+\end{proof}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Random Search (rS) for $n=2$ Case}
+%%%%%%%%%%%%%%%%\
+\subsubsection{Description}
+In bS, the next value of $\textit{output}_{22}$ to be parsed and checked is the point that bisects the search space. This occurs in Steps 5, 6 and 7, 8 of the bS algorithm. In rS, this value is sampled from a uniform distribution spanning a fixed search space, [0,1]. This is found in Step 4 of the following rS algorithm.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Algorithm}
+1. If $\pi_1 \geq \pi_2$ :
+
+\hspace{1cm} $b_1 \coloneqq 0$
+
+\hspace{4mm}Else:
+
+\hspace{1cm}$1-\frac{\pi_1}{\pi_2}$
+
+2. $b_2 \coloneqq 1$ ; $iters \coloneqq 2000$ ; $output \coloneqq $
+$\begin{bmatrix}
+    x_{11}       & 1-p \\
+    1-x_{11}       & p \\
+\end{bmatrix}$
+
+\hspace{4mm}where $p = \texttt{avg}([b_1, b_2]), x_{11} \sim U[0,1]$
+
+3. While $output*\texttt{ev}(output) \neq \pi$ and $iters > 0$:
+
+4. \hspace{1cm} $output_{22} = (b_2-b_1) \cdot u+b_1$ where $u \sim U[0,1]$
+
+5. \hspace{1cm} $output_{11} = 1 - (1-output_{22})\frac{\pi_2}{\pi_1}$
+
+6. \hspace{1cm} $iters \mathrel{-}= 1$
+
+7. Return $output$
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Performance}
+The worst-case complexity for implementing rS is $O(F(d)10^d)$ with low probability, where $F(d)$ is the cost of calculating with arithmetic operations with $d$-digit precision.
+
+\begin{proof}
+    Consider a complete Markov Chain of size $10^d \times 10^d$ with a transition matrix filled entirely of uniform distributions. That Markov Chain is analogous to iterating within rS, since each trial of $u$ in Step 4 of rS is independent and uniformly random across all 10-digit combinations (digits 0-9) of $d$-digits. The probability of hitting the correct value is always fixed at $\frac{1}{10^d}$. We can call this probability $p$ and use it as a parameter for a geometric distribution. The expected amount of steps until the correct value is reached is thus the expected value of this geometric distribution, which is $\frac{1}{p} = 10^d$. For each of these steps, an arithmetic cost of $F(d)$ is incurred, but with a variance of $\frac{1-p}{p^2} \gg 0$. Thus the worst-case complexity is $O(F(d)10^d)$ with low probability.
+\end{proof}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Binary-Random Search (brS) for $n=2$ Case}
+%%%%%%%%%%%%%%%%\
+\subsubsection{Description}
+brS combines the efficiency of bS with the ``open-mindedness'' of rS. Instead of sampling uniformly from a fixed search space, as in rS, brS samples uniformly from the ``remaining search space.'' The ``remaining search space'' is calculated by bisecting the previous ``remaining search space,'' as in bS. Take note of Steps 4, 5 and 8, 9 to observe this in action:
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Algorithm}
+1. If $\pi_1 \geq \pi_2$ :
+
+\hspace{1cm} $b_1 \coloneqq 0$
+
+\hspace{4mm}Else:
+
+\hspace{1cm}$1-\frac{\pi_1}{\pi_2}$
+
+2. $b_2 \coloneqq 1$ ; $iters \coloneqq 2000$ ; $output \coloneqq $
+$\begin{bmatrix}
+    x_{11}       & 1-p \\
+    1-x_{11}       & p \\
+\end{bmatrix}$
+
+\hspace{4mm}where $p = \texttt{avg}([b_1, b_2]), x_{11} \sim U[0,1]$
+
+3. While $output*\texttt{ev}(output) \neq \pi$ and $iters > 0$:
+
+4. \hspace{1cm} If $\texttt{ev}(output)_2 < \pi_2$ :
+
+5. \hspace{2cm} $b_1 = \texttt{avg}([b_1, b_2])$
+
+6. \hspace{2cm} $output_{22} \mathrel{+}= (b_1-b_2) \cdot u$ where $u \sim U[0,1]$
+
+7. \hspace{1.4cm} Else:
+
+8. \hspace{2cm} $b_2 = \texttt{avg}([b_1, b_2])$
+
+9. \hspace{2cm} $output_{22} \mathrel{-}= (b_1-b_2) \cdot u$ where $u \sim U[0,1]$
+
+10. \hspace{1cm} $output_{11} = 1 - (1-output_{22})\frac{\pi_2}{\pi_1}$
+
+11. \hspace{1cm} $iters \mathrel{-}= 1$
+
+12. Return $output$
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Performance}
+The worst-case complexity for implementing brS is $O(F(d)log(d))$ with low probability, where $F(d)$ is the cost of calculating with arithmetic operations with $d$-digit precision. The proof follows the same reasoning as that of bS, because, on average, each remaining search space is expected to be bisected.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\section{Finding $\mathbb{P}^{(I)}$ Directly when $n \geq 2$}
+In this section, we survey multiple means of directly calculating a $\mathbb{P}^{(I)}$ when $n \geq 2$, namely LP, NRS, GRS, GI, and CMA-ES.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Linear Programming (LP)}
+In this section, we describe how linear programs may be used to directly solve for $\mathbb{P}^{(I)}$.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Definition of LPs}
+A Linear Program (LP) is defined to be a vector $\vec{x}$ that minimizes or maximizes (the \textit{objective}) some linear function $\vec{c}^T\vec{x}$ (the \textit{objective function}) subject to \textit{constraints} $\textbf{M}\vec{x} \geq \vec{b}$ and $\vec{x} \geq \vec{0}$ where $\vec{x} \geq \vec{0} \iff \forall x \in \vec{x}, x \geq 0$. LPs are usually stated as follows:
+
+\hspace{6cm} \textbf{[Objective]} \textbf{[Objective Function]}
+
+\hspace{6cm} s.t. $\textbf{M}\vec{x} \geq \vec{b}$
+
+\hspace{6cm} and $\vec{x} \geq 0$
+
+\cite{lpDef}. For example:
+
+\hspace{6cm} \textbf{Maximize} $Z = x_1 + 2x_2$
+
+\hspace{6cm} s.t. $5x_1 + 5x_2 \geq 20$
+
+\hspace{7.8cm} $x_2 \geq 4$
+
+\hspace{6cm} and $x_1, x_2 \geq 0$
+
+In this example,
+
+\[
+c = \begin{bmatrix}
+    1 \\
+    2
+\end{bmatrix},
+M =\begin{bmatrix}
+    5 & 5 \\
+    0 & 1
+\end{bmatrix},
+b =\begin{bmatrix}
+    20 \\
+    4
+\end{bmatrix}
+\]
+
+And the solution occurs at $Z^* = 8, x_1^* = 0, x_2^* = 4$
+
+Solutions to LPs are very easy to obtain using the \textit{Simplex Algorithm}. Discussion of this algorithm is beyond the scope of this paper but is simple to implement.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Using LPs}
+We seek an $n$ x $n$ matrix $\mathbb{P}^{(I)}$ satisfying:
+
+\begin{equation}\label{eq:1}
+    \mathbb{P}^{(I)}\pi = \pi
+\end{equation}
+
+which is equivalent to finding all $p_{ij}$ (the elements of $\mathbb{P}^{(I)}, \forall i,j=1,2,...,n$) satisfying the following constraints:
+
+\[
+\forall i=1,2,...,n ; \sum_{j=1}^n p_{ij}\pi_j = \pi_i
+\]\[
+\forall j=1,2,...,n ; \sum_{i=1}^n p_{ij} = 1
+\]\[
+\forall i,j=1,2,...,n ; p_{ij} \geq 0
+\]
+
+Given:
+
+\[
+\pi = [\pi_1, \pi_2, ..., \pi_n]^T
+\]
+
+These constraints, in addition to the implied non-negativity constraints upon all $p_{ij}$, are almost enough to form an LP. All that is left to supply is an objective and linear objective function. For example:
+
+\begin{itemize}
+  \item[] \textbf{Objective:} Maximize
+  \item[] \textbf{Objective Function:} \texttt{trace}($\mathbb{P}^{(I)}$)
+  \item[] \textbf{Intuitive Meaning:} We want the most stable convergence to the optimal population distribution i.e. we want as few individuals moving as possible.
+\end{itemize}
+
+The diagonal elements of $\mathbb{P}^{(I)}$ represent the probabilities of individuals remaining in their bins between time steps. The larger the values of these elements, the higher the probability an individual does not move to another bin. Therefore, maximizing the trace of $\mathbb{P}^{(I)}$, the sum of these diagonal elements, is to maximize the probability that individuals in any bin do not move change their bin. Minimizing the movement of individuals is considered maximizing the \textit{stability} of the population's convergence to the desired $\pi$.
+
+As an additional consideration in this example, one should also add the constraint that any or at least some element of the diagonal of $\mathbb{P}^{(I)}$, $p$, should satisfy $p < 1$ to ensure that we do not output the identity matrix. The identity matrix not only maximizes the trace of $\mathbb{P}^{(I)}$ and is a permissible transition matrix (i.e. all columns are probability distributions), but it also satisfies:
+
+\[
+\mathbb{P}^{(I)} \pi = \pi
+\]
+
+In considering alternative pairs of objectives and objective functions, a common issue that arises is that the objective function must be linear, and this application has scant need for a linear objective function. Furthermore, the most useful candidate nonlinear objective functions may not lend themselves to an explicit form. For example:
+
+\begin{itemize}
+  \item[] \textbf{Objective:} Minimize
+  \item[] \textbf{Objective Function:} The second eigenvalue of $\mathbb{P}^{(I)}$
+  \item[] \textbf{Intuitive Meaning:} We want convergence to $\pi$ to occur as fast as possible. The justification for this intuitive meaning is provided in Section \ref{sssec:eigsAndMixes}.
+\end{itemize}
+
+We thus turn to methods that can either tolerate such difficult functions or do not rely on an objective function, but only after we discuss how to implement the above LP, which seeks to maximize \texttt{trace}($\mathbb{P}^{(I)}$).
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Implementing LPs}
+Appendix 10.1 provides Python code that may be used to solve for the above LP, which seeks to maximize \texttt{trace}($\mathbb{P}^{(I)}$). In this section, we discuss the method underlying the code.
+
+We must first construct the linear objective function $\vec{c}^T\vec{x}$ where $\vec{x}$ is the vector of all elements in $\mathbb{P}^{(I)}$, otherwise known as the \textit{vectorized} $\mathbb{P}^{(I)}$. Again, we seek to maximize \texttt{trace}($\mathbb{P}^{(I)}$), which is the sum of the diagonal elements of $\mathbb{P}^{(I)}$. Therefore, let:
+
+\[
+\vec{c} = [c_1, c_2, \cdots, c_n]
+\]
+
+where $\forall i \in \{1,\dots,n\}, c_i[i] = 1, j \neq i \Rightarrow c_i[j] = 0$. So $\vec{c}$ looks like this:
+
+\[
+\vec{c} = [1,0,\cdots,0,1,0,\cdots,0,0,1,0,\cdots,0,0,0,1,0,\cdots\cdots,0,1]
+\]
+
+Thus,
+
+\[
+\vec{c}^T\vec{x} = \sum_{i=1}^n p_{ii}
+\]
+
+To implement the first constraint, which requires $\forall j \in \{1,\dots,n\}, \mathbb{P}^{(I)}[j,:]\pi = \pi[j]$, we let the matrix of linear constraints take the following form:
+
+\[
+\textbf{M} = \begin{bmatrix}
+    \pi & \vec{0} & \vec{0} & \dots  & \vec{0} \\
+    \vec{0} & \pi & \vec{0} & \dots  & \vec{0} \\
+    \vec{0} & \vec{0} & \pi & \dots  & \vec{0} \\
+    \vdots & \vdots & \vdots & \ddots & \vdots \\
+    \vec{0} & \vec{0} & \vec{0} & \dots  & \pi
+\end{bmatrix}
+\]
+
+where $\vec{0}$ is the $n$-length zero-vector.
+
+We cannot forget to require that all columns of $\mathbb{P}^{(I)}$ sum to 1. Thus we must append a more constraints to the bottom of \textbf{M}.
+
+\[
+\textbf{M} = \begin{bmatrix}
+    \pi & \vec{0} & \vec{0} & \dots  & \vec{0} \\
+    \vec{0} & \pi & \vec{0} & \dots  & \vec{0} \\
+    \vec{0} & \vec{0} & \pi & \dots  & \vec{0} \\
+    \vdots & \vdots & \vdots & \ddots & \vdots \\
+    \vec{0} & \vec{0} & \vec{0} & \dots  & \pi \\
+    \vec{1} & \vec{0} & \vec{0} & \dots  & \vec{0} \\
+    \vec{0} & \vec{1} & \vec{0} & \dots  & \vec{0} \\
+    \vec{0} & \vec{0} & \vec{1} & \dots  & \vec{0} \\
+    \vdots & \vdots & \vdots & \ddots & \vdots \\
+    \vec{0} & \vec{0} & \vec{0} & \dots  & \vec{1}
+\end{bmatrix}
+\]
+
+where $\vec{1}$ is an $n$-length vector of 1s. Thus,
+
+\[
+\forall i=1,2,...,n ; \sum_{j=1}^n p_{ij}\pi_j = \pi_i,
+\hspace{2mm}
+\forall j=1,2,...,n ; \sum_{i=1}^n p_{ij} = 1 \iff \textbf{M}\vec{x} = \vec{b}
+\]
+
+where
+
+\[
+\vec{b} = \begin{bmatrix}
+    \pi[1] \\
+    \vdots \\
+    \pi[n] \\
+    1 \\
+    \vdots \\
+    1
+\end{bmatrix}
+\]
+
+Note that \textbf{M} has dimensions $2n \times n^2$ and $\vec{b}$ has dimensions $2n \times 1$. Finally, we enforce the nonnegativity constraints:
+
+\[
+\forall i,j=1,2,...,n ; p_{ij} \geq 0
+\]
+
+If we choose to maximize \texttt{trace}($\mathbb{P}^{(I)}$), then the identity matrix may be returned. To ensure we return an irreducible and nontrivial solution, we may enforce additional constraints on our parameters:
+
+\[
+\forall i,j=1,2,...,n ; \epsilon < p_{ij} < 1-\epsilon
+\]
+
+for some small $\epsilon > 0$. Even with this, solutions from LP seem to resemble the identity matrix (all non-diagonal elements are $\epsilon$, all diagonal elements are $1-\epsilon$). All solutions given by LP take this form, so although solutions are found nearly immediately in real-time, solutions are limited and often uninformative. Furthermore, we often find that the problem is infeasible likely due to floating point errors, even when we use methods designed to handle such errors like the ``interior-point'' method offered by the Python package, SciPy. Thus, unless we are more creative than the author in our choice of objective function, LP often fails us. Despite these shortcomings, LP may be useful for dealing with $\mathbb{P}^{(I)}$ with some constrained elements whenever it is feasible to implement such constraints.
+
+We now turn to other methods that trade efficiency for always allowing us to find $\mathbb{P}^{(I)}$. For large $n$, these algorithms may perform especially slowly compared to LP, but they work nonetheless. Furthermore, iteration limits can be imposed to obtain approximately correct solutions and save runtime, which may qualify the following methods as more attractive options than LP.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Na\"ive Random Search (NRS)}
+%%%%%%%%%%%%%%%%\
+\subsubsection{Description}
+NRS can be viewed as an $n \geq 2$ generalization of rS. In each iteration of NRS, random columns of $\mathbb{P}^{(I)}$ are substituted for random column vector distributions from the $n$-dimensional uniform distribution.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Algorithm}
+Let $v=$ the current first eigenvector of $\mathbb{P}^{(I)}$.
+
+1. Initialize all columns of $\mathbb{P}^{(I)}$ to be random samples from $U[0,1]^n$.
+
+2. Until $\mathbb{P}^{(I)}$ has $\pi$ as its first eignenvector OR $iterations == max\_iterations$:
+
+3. \hspace{1cm} For each column $p$ in $\mathbb{P}^{(I)}$:
+
+4. \hspace{1cm}\hspace{1cm} Until $|p - p_{old}|< threshold$:
+
+5. \hspace{1cm}\hspace{1cm}\hspace{1cm} Sample $p_{new} \sim U[0,1]^n$
+
+6. \hspace{1cm}\hspace{1cm}\hspace{1cm} If $\mathbb{P}^{(I)}$ with $p_{new}$ in place of $p$ has a first eigenvector closer to $pi$:
+
+7. \hspace{1cm}\hspace{1cm}\hspace{1cm}\hspace{1cm} $p \leftarrow p_{new}$
+
+8. Return $\mathbb{P}^{(I)}$
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Performance}
+Far more iterations are required to obtain the same accuracy as other methods. The variance of the worst-case runtime complexity is exponentially worse than rS courtesy of the Curse of Dimensionality, specifically $O(F(d)10^{dn^2})$. The only difference between this runtime and that of rS is the power of $n^2$, because now there are now $n^2$ matrix elements that must be randomly found whereas in rS there was only 1 value to find.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Greedy Random Search (GRS)}
+%%%%%%%%%%%%%%%%\
+\subsubsection{Description}
+GRS may be considered a generalized brS method. Let \texttt{normalize}($P$) be the normalization function that ensures all columns of matrix $P$ add to 1. Let \texttt{randInt}($1:n$) lazily return single iid samples from the discrete uniform distribution with support $\{1, \dots, n\}$.
+
+The intuition behind this algorithm is that if $v_1$ is the first eigenvector of $\mathbb{P}^{(I)}$ and if $v_1[a] < \pi[a]$, then we ought to ensure that the probability of staying at node $a$ is greater than what it currently is. Likewise, if $v_1[a] > \pi[a]$, then we ought to ensure the probability of staying at node $a$ is less than what it currently is. This logic was implemented, and, sadly, its effectiveness is limited. It rarely ever converges in a timely manner, hence why the number of iterations is limited. Often, the correct ordering of indices by size of their value in $v_1$ matches with that of those with values in $\pi$. For example, if $v_1 = [.35,.25,.4]$, then the indices are ordered, from least to greatest: 2, 1, 4. If $\pi = [.25,.05,.7]$, then the ordering of indices from least to greatest is still 2, 1, 4, and therefore the orderings of indices by their respective values in $v_1$ and $\pi$ match. Again, for GRS, this form of accuracy is often the best it is typically capable of achieving, though there have been instances where it does work perfectly.
+
+The most complex part of GRS occurs on Line 5 in the GRS Algorithm. In this line, we first ensure that if $\forall a \in \{1, \dots, n\}; \mathbb{P}^{(I)}[a,a] < 0$ or $\mathbb{P}^{(I)}[a,a] > 1$, then we do not alter $\mathbb{P}^{(I)}$. Otherwise, we double-check that $\forall a \in \{1, \dots, n\}; 0 < \mathbb{P}^{(I)}[a,a] < 1$, then alter $\mathbb{P}^{(I)}[a,a]$ by a factor of $(1+c)$. Finally, note that the value of 0.45 multiplied to $c$ in Line 4 was selected purely because it seemed to work the best after some non-rigorous experimentation conducted by the author. Perhaps future research may find into the optimal value for this factor.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Algorithm}
+1. \textbf{Initialize}
+$\forall$ columns $\vec{p} \in \mathbb{P}^{(I)}, \vec{p} \sim U[0,1]^n$, \texttt{normalize}($\mathbb{P}^{(I)}$)
+
+\hspace{2cm} $threshold = 0.001$
+
+\hspace{2cm} $iterations = n*100000$
+
+2. \textbf{Until} $|\mathbb{P}^{(I)}\pi - \pi| < threshold$ \textbf{OR} $iterations == 0:$
+
+3. \hspace{1cm} $a \coloneqq \texttt{randInt}(1:n)$
+
+4. \hspace{1cm} $c = 0.45*(2*(ev[a] < pi[a]) - 1)$
+
+5. \hspace{1cm} $\mathbb{P}^{(I)}[a,a] = \mathbb{P}^{(I)}[a,a]*\bigg( ((1+c)*\mathbb{P}^{(I)}[a,a] > 1) + ((1+c)*\mathbb{P}^{(I)}[a,a] < threshold) \bigg)$
+
+    \hspace{4cm} $+ (1+c)*\mathbb{P}^{(I)}[a,a]*((1+c)*\mathbb{P}^{(I)}[a,a] <= 1)*((1+c)*\mathbb{P}^{(I)}[a,a] > 0)$
+
+6. \hspace{1cm} \texttt{normalize}($\mathbb{P}^{(I)}$)
+
+7. \hspace{1cm} $iterations \mathrel{-}= 1$
+
+8. \textbf{Return} $\mathbb{P}^{(I)}$
+
+Remember that logical operations may translate to integers in some programming languages, including Python e.g. $(1 < 2) \rightarrow 1, (1 > 2) \rightarrow 0$.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Gibbs-Inspired Method (GI)}
+%%%%%%%%%%%%%%%%\
+\subsubsection{Description}
+This algorithm derives its name from its inspiration, the Gibbs Sampler discussed in Geman \& Geman \cite{Geman}. Whereas the Gibbs Sampler persistently samples a randomly selected random variable from a distribution conditioned on all other random variables in consideration, GI persistently calculates the correctness of a matrix after optimizing a small, randomly selected part of that matrix.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Algorithm}
+1. \textbf{While} \texttt{sum}$(|\mathbb{P}^{(I)}\pi - \pi|) <  tolerance$ AND $iterations < max\_iterations$:
+
+2. \hspace{1cm} Isolate 2 random bins and the number of people within those 2 bins i.e. consider:
+    \[
+    \mathbb{P}^{(I)}_{b_i,b_j}\pi_{b_i,b_j} = \pi_{b_i,b_j}
+    \]
+   \hspace{2cm} where
+    \[
+    \mathbb{P}^{(I)}_{b_i,b_j} \text{is $\mathbb{P}^{(I)}$ less all rows and columns but those with index } b_i \text{ or } b_j.
+    \]\[
+    \pi_{b_i,b_j} \text{is the stationary distribution of $\mathbb{P}^{(I)}$ less all elements but those with index } b_i \text{ or } b_j.
+    \]
+
+3. \hspace{1cm} Normalize $\pi_{b_i,b_j}$.
+
+4. \hspace{1cm} Find the optimal $\mathbb{P}^{(I)}_{b_i,b_j}$ using bS, rS, or brS.
+
+5. \hspace{1cm} Substitute these new values into the old values found at indices $b_i, b_j$, renormalizing the values with respect to the amount of ``mass'' they cumulatively took up before within each of their respective columnar probability distributions.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Performance}
+In practice, GI performs extremely well for small $n$ and $N$. Relative to the other methods, GI is still fast for larger $n$ and $N$ and also exhibits a relatively good accuracy.
+
+The Gibbs Sampling algorithm is considered to sample from the intended distribution when all parameters have been updated at least once (or a constant factor number of times). We will make the same assumption with GI. Given $d$-digit precision and when $n=2$, bS will, at worst, cost some amount in $O(F(d)log_2(d))$. For $n>2$, all possible pairs of row indices from $\mathbb{P}^{(I)}$ will eventually be subjected to bS. The expected time at which this occurs will be the time we calculate.
+
+Define a Markov Chain $X=(X_1,X_2,...,X_T)$ with ${n \choose 2}+1$ nodes with associated values $S = \{0,1,...,{n \choose 2}\}$. These values represent the number of unique pairs of the indices $1,2,...,n$ parsed by GI. After setting $A \coloneqq {n \choose 2}$ and realizing that we uniformly choose among all possible pairs of indices, we can represent the Markov Chain graphically as follows:
+
+% https://sites.hks.harvard.edu/davidlazer/files/papers/Lazer_Friedman_ASQ.pdf
+\begin{center}
+    \begin{tikzpicture}
+        \node[state] (0) {0};
+        \node[state, right=of 0] (1) {1};
+        \node[state, right=of 1] (2) {2};
+        \node[draw=none, right=of 2] (dots) {$\cdots$};
+        \node[state, right=of dots] (A) {$A$};
+        \draw[every loop]
+            (0) edge[bend right, auto=left] node {1} (1)
+            (1) edge[loop above] node {$1-p_1$} (1)
+            (1) edge[bend right, auto=left] node {$p_1$} (2)
+            (2) edge[loop above] node {$1-p_2$} (2)
+            (2) edge[bend right, auto=left] node {$p_2$} (dots)
+            (dots) edge[bend right, auto=left] node {$p_{A-1}$} (A)
+            (A) edge[loop above] node {1} (A);
+    \end{tikzpicture}
+\end{center}
+
+where $\forall j \in \{0 \cdots A\}, p_j=\frac{A-j}{A}$. What we seek is $\mathbb{E}[T]$, where $T$ is the total number of steps until GI completes. We embark on a \textit{First-Step Analysis}, as it's called, to find $\mathbb{E}[T]$. If we set $v_j = \mathbb{E}[T|X_0 = j]$, and assert that we'll always be starting at $X_0 = 0$, then by the Law of Total Probability:
+
+\[
+\mathbb{E}[T] = \sum^A_{j=0} v_j\mathbb{P}(X_0=j) = v_0
+\]
+
+because $\mathbb{P}(X_0=0) = 1$ and $\forall j=1:A, \mathbb{P}(X_0=j) = 0$. Furthermore,
+
+\[
+v_0 = 1 + v_1
+\]\[
+\forall j \in \{1 \cdots (A-1)\}, v_j = 1+(1-p_j)v_j + p_jv_{j+1}
+\]\[
+v_A = 0
+\]
+
+All that is unknown are the conditional expectations $v_j$. Note that to solve for them is equivalent to solving the system of equations $\mathbb{M}\vec{v}=\vec{v}$, where:
+
+\[
+\mathbb{M} = \begin{bmatrix}
+    1 & 0 & 1 & 0 & 0 & \hdots & \hdots & 0 \\
+    1 & 0 & 1-p_1 & p_1 & 0 & \hdots & \hdots & 0 \\
+    1 & 0 & 0 & 1-p_2 & p_2 & \hdots & \hdots & 0 \\
+    \vdots & \vdots & \vdots & \vdots & \vdots & \ddots & & \vdots \\
+    \vdots & \vdots & \vdots & \vdots & \vdots & & 1-p_{A-1} & p_{A-1} \\
+    0 & 0 & 0 & 0 & 0 & \hdots & \hdots & 0 \\
+\end{bmatrix},
+\vec{v} = \begin{bmatrix}
+    1 \\
+    v_0 \\
+    v_1 \\
+    \vdots \\
+    v_A
+\end{bmatrix}
+\]
+
+Note that the transition matrix for the Markov Chain $X$ is embedded within $\mathbb{M}$ - if you remove the first column and last row of $\mathbb{M}$, you arrive at the transition matrix. In practice, it may be more computationally efficient to calculate the eigenvector of $\mathbb{M}$ corresponding to an eigenvalue of 1. Otherwise, we may continue to directly and analytically solve for $v_0$. We know from above that:
+
+\[
+v_{A-1} = 1 + (1-p_{A-1})v_{A-1} + p_{A-1}v_A = 1 + (1-p_{A-1})v_{A-1}
+\]\[
+\Rightarrow (1+p_{A-1}-1)v_{A-1} = 1
+\]\[
+\Rightarrow v_{A-1} = \frac{1}{p_{A-1}}
+\]
+
+Similarly,
+
+\[
+v_{A-2} = 1 + (1-p_{A-2})v_{A-2} + p_{A-2}v_{A-1} = 1 + (1-p_{A-1})v_{A-1} + \frac{p_{A-2}}{p_{A-1}}
+\]\[
+\Rightarrow (1+p_{A-2}-1)v_{A-2} = 1 + \frac{p_{A-2}}{p_{A-1}}
+\]\[
+\Rightarrow v_{A-2} = \frac{1}{p_{A-1}} + \frac{1}{p_{A-2}}
+\]\[
+\cdot
+\]\[
+\Rightarrow v_1 = \sum^{A-1}_{j=1} \frac{1}{p_j}
+\]\[
+\Rightarrow v_0 = 1 + v_1 = 1 + \sum^{A-1}_{j=1} \frac{1}{p_j} = \sum^{A-1}_{j=0} \frac{A}{A-j}
+\]\[
+\therefore \mathbb{E}[T] = A(\psi^{(0)}(A+1) + \gamma)
+\]
+
+\cite{wolfGI}
+
+where $\psi^{(0)}$ is the $0^{th}$ derivative of the digamma function (i.e. the digamma function itself) and $\gamma$ is the Euler-Mascheroni Constant. Again, the matrix form of the solution was provided as the reader may lack access to the digamma function or the Euler-Mascheroni Constant to a necessary precision.
+
+Note that this expected runtime can easily be divided by $s$, where $s \in \{1 \cdots \frac{n}{2}\}$ is the number of computational nodes (e.g. servers, processors) available for parallelization of GI. Pairs of indices from $1,\cdot,n$ would be uniformly sampled without replacement. Each sampled pair would be assigned to a node, and bS (or rS or brS) would be computed on each node. The results from all nodes would be aggregated back into a central node, which would repeat the process of assigning random pairs of indices to nodes. One can also borrow from the field of Deep Learning and implement \textit{dropout}, whereby each sampled pair of indices undergoes bS on a node only if $x = 1$, where $x \sim \text{Bernoulli}(p)$ and $p$ is usually between 0.5 and 0.8. Droupout is conventionally used to prevent neural networks from overfitting their supplied training data. In this case, the author has no reason to suspect that performance enhancements, whether in accuracy or efficiency, may not be realized by implementing dropout.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{CMA-ES Method}
+Covariate Matrix Adapation Evolution Strategy (CMA-ES) is a very general evolutionary algorithm that is meant to optimize ``tricky'' objective functions i.e. ones that are non-convex (lack a clear direction of descent toward any optima), multimodal (have multiple optima), non-smooth (derivatives of the objective function do not exist), discontinuous (the objective function and its derivatives do not exist), non-separable (there are dependencies between objective variables), noisy (the objective function does not exhibit any discernable pattern), or are high in dimension (the search space is too large, the problem is afflicted by the \textit{Curse of Dimensionality}). These types of situations are known as \textit{Black-Box Scenarios}, whereby the function cannot be accessed through traditional optimization approaches; All that's available to us may be some elements of the function's domain and range. Perhaps even the cost of evaluating the function eludes us. \cite{cma1} \cite{cma2} \cite{cma3} \cite{cma4}
+
+We can define our objective function to be some function that accepts a matrix and outputs \textit{true} if the matrix is a transition matrix (all elements are non-negative and all columns sum to 1) and has our desired eigenvalue of 1 with a corresponding eigenvector of $\pi$, else \textit{false}. Perhaps we also seek to make the second largest eigenvalue in magnitude (the second eigenvalue) of the transition matrix as small as possible (see next subsection to learn why we may want this). Regardless of the objective function we choose, we are doomed to optimize a ``tricky'' function, and thus we must initialize a random $1 \times n^2$ vector, feed it to the CMA-ES, and hope that it computes fast enough. For floating-point precision less than 3 digits, the author can confirm that the CMA-ES does finish on a single processor in a reasonable amount of time.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{A Word on Eigenvalues and Mixing Times} \label{sssec:eigsAndMixes}
+How do we know when an MC has reached its stationary distribution? There may exist plenty of fluctuations in the behavior of $(\mathbb{P}^{(I)})^t\vec{x}$ for some initial distribution $\vec{x}$ and increasing $t>t_0>0$, even if we already reached $(\mathbb{P}^{(I)})^{t_0}\vec{x}=\pi$ for some $t_0$. The time at which the distance between the current distribution $(\mathbb{P}^{(I)})^t\vec{x}$ and the stationary distribution $\pi$ is $\epsilon$-small is called the \textit{mixing time} and is defined as follows:
+
+\begin{defn}[Mixing Time]
+    Let $\vec{x}$ be any positive semi-definite vector, $\forall i \in \{1 \cdots n\}, \vec{x}[i] \geq 0$, satisfying $\sum_{i=1}^n \vec{x}[i] = 1$. Choose an $\epsilon > 0$. Then the mixing time is:
+    \[
+    t_{mix}(\epsilon) = \textnormal{min}\{t:d(t) \leq \epsilon\}
+    \]
+    where
+    \[
+    d(t) = \norm{(\mathbb{P}^{(I)})^t\vec{x} - \pi}
+    \]
+\end{defn}
+
+With this concept in mind, we can develop means of at least limiting the magnitude of $t_{mix}(\epsilon)$ beyond relaxing $\epsilon$. Define:
+
+\[
+\pi_{min} = \min_{i \in \{1 \cdots n\}} \pi[i]
+\]
+
+and let $\lambda_2$ be the second largest eigenvalue of $\mathbb{P}^{(I)}$. It can be shown that:
+
+\begin{Theorem}
+    \[
+    t_{mix}(\epsilon) < 1 + \frac{1}{1-\lambda_2} \textnormal{log}\big(\frac{1}{\epsilon\pi_{min}}\big)
+    \]
+\end{Theorem}
+
+\cite{kale}
+
+After noting that all eigenvalues of a transition matrix are elements of [0,1], then, for a given $\epsilon$, we know that minimizing $\lambda_2$ (getting it as close to 0 as possible) will minimize $t_{mix}(\epsilon)$, and, inversely, maximizing $\lambda_2$ (getting it as close to 1 as possible) will maximize $t_{mix}(\epsilon)$.
+
+Additionally, it can be shown that the greater the \textit{eigengap} $|\lambda_1| - |\lambda_2|$ the more stable the stationary distribution is to perturbations in the MC. \cite{secondev}
+
+Perhaps we want our population to converge to $\pi$ as quickly as possible, and perhaps we want its convergence to $\pi$ to be as stable as possible. We can then use both previously stated facts regarding the eigenvalues of $\mathbb{P}^{(I)}$ as \textit{regularizations} in our objective function. In other words, they can be used to weight the output of our objective function in favor of certain properties. Again, the exact mapping from $\mathbb{P}^{(I)}$ to its eigenvalues exhibits a high-dimension argument space (its arguments are every element of $\mathbb{P}^{(I)}$), is non-separable (the elements of $\mathbb{P}^{(I)}$ interact ambiguously to generate the eigenvalues), and, for these and further reasons, may simply be classified as ``tricky''. Thus, the call to care for these regularizations becomes a call to utilize the best means available to deal with them, the CMA-ES algorithm.
+
+See the code in Appendix 10.8 for an implementation of CMA-ES in Python. The Python module \texttt{cma}, which includes all necessary CMA-ES functionality, is maintained by Nikolaus Hansen of the Universit\'e Paris-Saclay. \cite{cma1} \cite{cma2} \cite{cma3} \cite{cma4}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Direct Methods with Constrained Parameters}
+All methods allow us to find optimal $\mathbb{P}^{(I)}$ with constrained parameters, where some of the elements of $\mathbb{P}^{(I)}$ hold already-specified values and cannot be altered. We assume that the addition of constraints is intuitive for the ``n=2''-case methods, LP, CMA-ES and NRS. Constraints are deeply intertwined and go hand-in-hand LP and CMA-ES. NRS can be simply modified to incorporate additional constraints; For each column of $\mathbb{P}^{(I)}$ with $k$ constrained elements, just reject all normalized samples from $Uniform[0,1]^n$ whose values at the $k$ indices are not permissible. GRS and GI may lack this intuitiveness in the face of constrained parameters.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Constrained GRS Example}
+Given a dictionary that lets us check if a column has constraints, the following procedure would be inserted between Line 5 and Line 6 of the GRS algorithm. For each element with a constraint $i$ in the selected column $k$, randomly sample a value within an interval $[a_i,b_i]$ satisfying $0 \leq a_i \leq b_i \leq 1$. Call this sample $c_i$. Note that when $a_i=b_i$, we have an equality constraint. Otherwise, we have an inequality constraint. Normalize the column by multiplying all non-constrained values in column k by $1-\sum_i c_i$. Proceed as usual.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Constrained GI Example}
+Within GI, we persistently form various $n=2$ subproblems. We check various permissible values for $p_{22}$, solve for $p_{11}$ using $p_{22}$, return the result to the original problem and repeat. The space of possible values for $p_{22}$ is already constrained to ensure that $p_{11} + (1-p_{11}) = p_{22} + (1-p_{22}) = 1$ and $p_{11}, p_{22} > 0$. We can simply further constrain this space to incorporate our additional constraints. In the case of equality constraints, Equation (\ref{eq:2}) subject to Constraint (\ref{eq:3}) can be used to immediately recover $p_{11}$ whenever $p_{22}$ is given and vice versa. In the case of inequality constraints, we can still use Equation (\ref{eq:2}) but subject it to Constraint (\ref{eq:3}) in addition to whatever other constraints we must implement, and take pause when all constraints cannot be satisfied at once. Here is an example when all constraints can be simultaneously satisfied:
+
+Suppose we must enforce that $p_{13} < \frac{1}{2}$, then whenever $p_{13}$ is selected to be $p_{11}$ in one of many $n=2$ subproblems of a GI instance, we randomly select a value $p_{22}$ such that:
+
+\[
+p_{22} \geq 1 - \frac{\pi_1}{\pi_2}
+\]
+
+and
+
+\[
+p_{11} = 1 - (1-p_{22})\frac{\pi_2}{\pi_1} < \frac{1}{2}
+\]
+
+We can manipulate that second, additional constraint in the following manner:
+
+\[
+\frac{1}{2} < (1-p_{22})\frac{\pi_2}{\pi_1}
+\]\[
+\frac{\pi_1}{2\pi_2} < (1-p_{22})
+\]\[
+p_{22} < \frac{\pi_1}{2\pi_2}
+\]
+
+Therefore, we randomly choose a $p_{22}$ such that:
+
+\[
+1 - \frac{\pi_1}{\pi_2} \leq p_{22} < \frac{\pi_1}{2\pi_2}
+\]
+
+ensuring always that:
+
+\[
+0 \leq p_{22} \leq 1
+\]
+
+Here and in all cases, the values in $\pi$ -- in this case, $\pi_1$ and $\pi_2$ -- determine whether or not such a $p_{22}$ value even exists (whether or not the constraints admit a \textit{feasible} solution).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\section{Relaxing the Assumptions of Direct Methods}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Relaxing the Identityless Assumption}
+If individuals are expected to contribute to nodal functions or the welfare function to varying degrees, then we ought to drop the Identityless Assumption. If the number of types of individuals is $C$, then we will have $C$ equations:
+
+\begin{equation}\label{eq:4}
+    \forall i=1,...,C ; \mathbb{P}^{(I)}_i\pi_i = \pi_i
+\end{equation}
+
+where $\mathbb{P}^{(I)}_i, \pi_i$ refer to the transition matrix and stationary distribution for the $i$th ``type'' of unique individual, and are $n \times n$ and $n \times 1$, respectively. Each of these $C$ equations can be solved independently of the others.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Relaxing the Independence Assumption}
+The simplest form of dependency can be introduced without much effort. Consider a situation where both Identityless and Independence Assumptions are relaxed. You can say that certain types of individuals get to ``choose their distribution about the bins first'' and the optimal stationary distribution for other types of people is calculated thereafter. This task of finding the stationary distributions for each type of individual ``in order'' does not concern this paper as it would lead to a situation no different than that described by Equations (\ref{eq:4}). But this situation is not truly dropping the Independence Assumption. Although dependencies encoded in the calculation of stationary distributions has been introduced, dependencies influencing the transitions of individuals as they are transition between bins are more pragmatic and have yet to be tackled.
+
+With the Independence Assumption actually dropped, all of a sudden the importance of a single individual's movements is lost -- $\mathbb{P}^{(I)}_{ij}$ and $\pi_i$ become useless. We now need information pertaining to the positions of all individuals, and how each of their positions affects the positions of other individuals. This motivates the development of the \textit{Mass Matrix}, $\mathbb{P}^{(M)}$, which allows us to insert information regarding dependencies between individuals or types of individuals. In this paper, when we drop the Independence Assumption, we will primarily be concerned with dynamics that arise from a population identityless individuals; We will tend to not drop Independence Assumption unless we maintain the Identityless Assumption.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\section{Finding the Mass Matrix ($\mathbb{P}^{(M)}$)}
+In this section, we define the \textit{Mass Matrix}, $\mathbb{P}^{(M)}$, motivate its existence, and provide two algorithms one can use to generate a $\mathbb{P}^{(M)}$, namely VSEA and Series Method. With each algorithm comes a description of how it works along with a quick word on its performance. Within the Series Method, we also define the notion of \textit{successively-bound weak compositions} and ways in which we may use $\mathbb{P}^{(M)}$ and the Series Method in relaxing the Independence Assumption.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Defining $\mathbb{P}^{(M)}$} \label{sec:defpm}
+In this section, we formally define $\mathbb{P}^{(M)}$ and provide an intuitive meaning of its structure.
+
+$\mathbb{P}^{(I)}$ is an $n \times n$ transition matrix that describes how each individual hops about bins. On the contrary, $\mathbb{P}^{(M)}$ describes how the entire population hops about different distributions and is an $s \times s$ transition matrix where:
+
+\[
+s \coloneqq {N+n-1\choose n-1}
+\]
+
+So we may say that $\mathbb{P}^{(M)}$ is a function mapping $(n,N) \mapsto M$, where $M \in \mathbb{M}^{s \times s}$, the space of $s \times s$ matrices. Consider the following generalized $\mathbb{P}^{(M)}$:
+
+\[
+\begin{bmatrix}
+    q_{11} & q_{12} & \cdots & q_{1s} \\
+    q_{21} & q_{22} & \cdots & q_{2s} \\
+    \vdots & \vdots & \ddots & \vdots \\
+    q_{s1} & q_{s2} & \cdots & q_{ss}
+\end{bmatrix}
+\]
+
+What do each of these $q_{ij}$ values mean? Each is the probability of the entire population changing from distribution $j$ to distribution $i$ in a single time step.
+
+The index corresponding to each distribution is arbitrary but must be consistent. For instance, if $n=2$ and $N=3$, index 1 may correspond to the population distribution where 3 people in bin 1 and no people are in bin 2 (let's denote this state as [3,0]). Index 3 may correspond to the population distribution [1,2]. Thus, the element in column 1, row 3 of $\mathbb{P}^{(M)}$ will be the probability of the 3 people hopping from state [3,0] to [1,2].
+
+It ought to be noted that the weighted sum $\pi = \sum^s_{j=1} v_j \vec{d_j}$, where $v_j$ is the $j$th element of the first eigenvector of $\mathbb{P}^{(M)}$, $v$, and $\vec{d_j}$ is the possible population distribution associated with index $j$ of $\mathbb{P}^{(M)}$. It is this property that powers the reasons we are motivated to generate $\mathbb{P}^{(M)}$.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Why do we care about $\mathbb{P}^{(M)}$?}
+In this section, we discuss why we may want to find $\mathbb{P}^{(M)}$.
+
+First, we may use $\mathbb{P}^{(M)}$ to verify our results (the values of $\mathbb{P}^{(I)}$ we obtain from any of the above algorithms). Within the first eigenvector (corresponding to the largest eigenvalue, 1) of $\mathbb{P}^{(M)}$, some element will correspond to $\pi$, the ideal stationary distribution of $\mathbb{P}^{(I)}$ we seek to impose. If we maximize that element, then we maximize the probability of achieving that stationary distribution. If our model lacks a population size sufficient to arrive at $\pi$, then we expect that the weighted sum of all possible population distributions, weighted by their corresponding entries of the first eigenvector of $\mathbb{P}^{(M)}$, will approximate $\pi$. Furthermore, we suspect that the possible population distributions ``closest'' to $\pi$ (e.g. by \textit{cosine distance}) ought to have the largest corresponding entry values in that first eigenvector.
+
+Secondly, $\mathbb{P}^{(M)}$ gives us an opportunity to generate new, perhaps more powerful solutions since it allows us to invoke new regularizations. This feature of $\mathbb{P}^{(M)}$ only applies when we need an objective function. For example, we may choose our objective function in the CMA-ES algorithm to weight the minimization of the second eigenvalue of $\mathbb{P}^{(M)}$ or, additionally, to weight the maximization of the element of the first eigenvector of $\mathbb{P}^{(M)}$ corresponding to $\pi$.\footnote{For the purposes of efficiency, it should be noted that symbolic math packages exist (such as SymPy \url{http://www.sympy.org/en/index.html}) that would greatly facilitate the extraction of information from $\mathbb{P}^{(M)}$. If, for instance, the second eigenvalue of $\mathbb{P}^{(M)}$ is included in the objective function of the CMA-ES algorithm, one only needs to create the symbolic $\mathbb{P}^{(M)}$ once and take aMantage of the fact that $\mathbb{P}^{(M)}$ depends entirely on $\mathbb{P}^{(I)}$. Once new values for $\mathbb{P}^{(I)}$ have been obtained in successive iterations of the CMA-ES algorithm, the updated $\mathbb{P}^{(M)}$ can be quickly generated from the symbolic $\mathbb{P}^{(M)}$.}
+
+Finally, the generation of $\mathbb{P}^{(M)}$ provides a stepping stone one may use toward relaxing the Independence Assumption. We will discuss this in Section \ref{sssec:relaxIndep}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Vector-Sum Enumeration Algorithm (VSEA)}
+In this section, we attempt to provide sufficient clarity into the algorithm coded in Appendix 10.9. Consider the following subsection to be a line-by-line analysis of the coded algorithm.
+
+The VSEA was the author's first attempt to tackle the problem of generating $\mathbb{P}^{(M)}$. It is currently not the preferred means of generating $\mathbb{P}^{(M)}$, but it is included anyway to demonstrate the author's development and to provide others with a starting point from which they may find a means of calculating $\mathbb{P}^{(M)}$ with an efficiency overshadowing that of the VSEA and perhaps even the currently preferred means of generating $\mathbb{P}^{(M)}$ (to be discussed later).
+
+In the following description, ``Block X'' refers the reader to the section in the code in Appendix 10.9 labelled with the in-line comment ``Block X''.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Description of VSEA}
+In this section, an explanation of how VSEA operates is provided.
+
+\textbf{Block A}
+
+Initialize some $s \times s$ matrix of zeros. This matrix will eventually be filled-in with the correct values and outputted. Create a ``basis'' (we don't mean ``basis'' in the typical sense) of all vectors that each represent a shift between possible mass states and describe the exact amounts of people lost and gained in each bin between transitions. For example, the basis vector representing moving someone from bin 1 to bin 2 when $n=3$ is $[-1 \hspace{2mm} 1 \hspace{2mm} 0]$. A zero vector ought to be initialized as well. These are not to be added to the initialized basis, but used later, whenever a person may stay within a bin. For instance, if our system moves from mass state $[2 \hspace{2mm} 0]$ (2 people in bin 1 and 0 people in bin 2) to $[1 \hspace{2mm} 1]$, then we ought to later use one zero vector, $[0 \hspace{2mm} 0]$ representing the lack of movement of one individual in bin 1.
+
+\textbf{Block B}
+
+Iterate over all possible population-state transitions i.e. over all elements in some zero-initialized $\mathbb{P}^{(M)}$. At each step, we will find the probability of that transition within one time step. For example, when $n=2, N=7$, what is the probability of going from a state with 4 people in bin 1 and 3 people in bin 2 to a state with everyone in bin 2?
+
+Each state is a weak composition \texttt{WC}($N,n$), so $\mathbb{P}^{(M)}$ can also be considered the collection of probabilities describing movements between any two weak compositions generated with parameters $N, n$. From this point forward, we will refer to the current state as $T_j$ and the new state as $T_i$.
+
+\textbf{Block C}
+
+Determine the element-wise difference between 2 states. For each bin $k\in\{1 \cdots n\}$, calculate the number of zero-vectors required to model the state transition, which equals min($T_i[k],T_j[k]$). Then, associate each 0 vectors with the corresponding diagonal element from $\mathbb{P}^{(I)}$. For instance, if anyone may stay in bin 2 between states, then we associate $p_{22}^{(I)}$ with a zero-vector.
+
+\textbf{Block D}
+
+Associate each basis vector with an element from $\mathbb{P}^{(I)}$. Given a population of $N$ individuals,  we may imagine that there are $N$ tokens to be distributed, with replacement, among all basis vectors, which now include the added zero-vectors. Each distribution of tokens needs to be considered, so iterate over all possible distributions. It should be noted that each token distribution is another set of weak compositions with parameters $N, lvlc$, where $lvlc$ is the total number of basis vectors for element $\mathbb{P}^{(M)}_{i,j}$. Each of theses weak compositions of tokens may be a possible means of achieving the state transition $T_j \rightarrow T_i$. If we take the weighted vector sum of the basis vectors, with each vector weighted by their respective number of associated tokens, then we ought to arrive at the vector difference $T_j - T_i$, hence the name ``Vector-Sum Enumeration Algorithm.'' In the next algorithm, we will see that the major runtime improvement comes from limiting this set of weak compositions to only the necessary weak combinations that actually achieve the relevant state transition.
+
+If a token distribution places too many tokens in the ``bins'' associated with any of the zero-vectors, then the token distribution is not permissible, and we move on to the next token distribution. We can check for permissibility by taking a weighted vector sum of the basis, with the weights for each vector being the number of tokens assigned to that vector. If that weighted sum equals the difference between mass states (e.g. If you are currently considering the state transition between State\_1 = $[2 \hspace{2mm} 0]$ and State\_2 = $[1 \hspace{2mm} 1]$, then the difference is $[-1 \hspace{2mm} 1]=$ State\_2 - State\_1) then keep that weighted sum.
+
+\textbf{Block E}
+
+If a distribution is permissible and there are not too many people leaving any bin after the basis vectors have been applied (this needs to be explicitly checked), then we begin to keep track of who goes where i.e. we begin to answer: How many people are actually entering each bin, and when people leave each bin, where do they end up? This will be used in the next block when we determine the number of ways this particular transition $T_j \rightarrow T_i$ can occur. For instance, if we transition from $[1 3] \rightarrow [2 2]$, Block D will begin to iterate through the following situations:
+
+\begin{itemize}
+    \item 1 person stays in bin 1, 1 person moves from bin 2 to bin 1
+    \item 1 person moves from bin 1 to bin 2, 2 people move from bin 2 to bin 1
+\end{itemize}
+
+whereas Block E create the necessary data structures to determine that:
+
+\begin{itemize}
+    \item There ${3 \choose 1} = 3$ ways that 1 person stays in bin 1 (with probability $p_{11}$) and 1 person moves from bin 2 to bin 1 (with probability $p_{21}$) (1 of any 3 different people can be chosen to move from bin 2 to bin 1)
+    \item There are ${3 \choose 2} = 3$ ways that 1 person moves from bin 1 to bin 2 (with probability $p_{21}$), 2 people move from bin 2 to bin 1 (with probability $p_{21}^2$) (2 of any 3 different people can be chosen to move from bin 2 to bin 1)
+\end{itemize}
+
+Finally, Block E maps basis vectors to their corresponding element in $\mathbb{P}^{(I)}$. The final calculation for this mass matrix element will be a sum, where each term consists of an integer coefficient, elements from $\mathbb{P}^{(I)}$, and exponents. The coefficients will be determined in Block F, Block E maps basis vectors to elements in $\mathbb{P}^{(I)}$, and the exponents acting on these elements of $\mathbb{P}^{(I)}$ are the number of tokens allotted to each basis vector in Block D. In continuing our example where $[1 \hspace{2mm} 3] \rightarrow [2 \hspace{2mm} 2]$:
+
+\[
+\mathbb{P}^{(M)}_{ij} = 3p_{11}p_{21} + 3p_{12}p_{21}^2
+\]
+
+where $p_{11},p_{12}p_{21},p_{12}$ are all elements of $\mathbb{P}^{(I)}$.
+
+\textbf{Block F}
+
+Substitute each basis vector for its associated value in $\mathbb{P}^{(I)}$ and let that value be raised to a power equal to the number of tokens allotted to the value's respective basis vector. Count the number of ways in which a particular migration of individuals can occur using the data structures formed in Block E. This number will become our coefficient for the current set of selected basis vectors. For each bin $i$, our coefficient is ${k^{(i)} \choose k^{(i)}_1,k^{(i)}_2,...}$, where $k^{(i)}$ is the total number of individuals within a bin $i$ and $k^{(i)}_1$ is the total number of those individuals leaving bin $i$ and entering bin 1. This is a multinomial choose operation that will become extremely important in the next algorithm.
+
+We repeat from Block D for all ways of attaining $T_j \rightarrow T_i$ and we repeat from Block B for all $s^2$ elements in $\mathbb{P}^{(M)}$.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Performance}
+This algorithm is $\in  O(s^2tl)$, since the algorithm requires looping through all $s^2 = {N+n-1 \choose n-1}^2$ elements of $\mathbb{P}^{(M)}$, all $t = {N+l-1 \choose l-1}$ potential basis vectors per element of $\mathbb{P}^{(M)}$, and all $l = (\frac{n!}{(n-n)!}+N) = n! + N$ basis vectors (each set of basis vectors has size $l$ and is a list of all permutations of -1, 1, and $n-2$ zeros plus, at most, 1 zero vector for every bin 1\dots n). To fully grasp the disgusting magnitude of this runtime, we may write it as:
+
+\[
+O\bigg( {N+n-1 \choose n-1}^2 {2N+n!-1 \choose N+n!-1} (n! + N) \bigg)
+\]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Series Method}
+As promised, we improve on the VSEA by limiting the number of permissible weak vector combinations of basis vectors. This task is difficult because one must know all the possible ways each individual from any bin may be allotted among all bins in the next time step given the movements of individuals from all previously parsed bins. The main insight that allows for the Series Method to exist is observing that the many ways individuals may be allotted to new bins is equivalent to some subset $W_i \subset \texttt{WC}(b[i],n)$. The permissible weak compositions from bin $i$ consist of elements of $\{w \in W_i | w+\sum^i_{j=1} k_j \leq T_i, \forall j \in \{1 \dots n\}, k_j = W_j\}$ i.e. we only choose weak compositions from $W_i$ that do not cause any bins to ``overflow'' with more individuals than the upper limit prescribed by $T_i$. Luckily, we have created an algorithm that can generate all possible permissible weak compositions, and we call the results of this algorithm a set of \textit{successively-bounded weak compositions}.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Successively-Bounded Weak Compositions}
+In this section we define the notion of successively-bounded weak compositions.
+
+\begin{defn}[Successively-Bounded Weak Composition]
+    A successively-bounded weak composition, $L \in$ \textnormal{\texttt{SBWC($v, w$)}}, with support vector $v$ and resistance vector $w$ satisfying $\sum^n_{i=1} w_i \geq \sum^n_{i=1} v_i$, is a list $L$ of $n$, $n$-length vectors satisfying:
+
+    \[
+        \forall i=1,...,n; \sum^n_{j=1} \vec{L}_i[j] = v_i
+    \]
+    \hspace{5cm} and
+    \[
+        \sum^n_{i=1} L_i \leq w
+    \]
+
+    where $n$ is the length of both $v$ and $w$. $\vec{L}_i[j]$ represents element $j$ of vector $\vec{L}_i$. Equality in the second constraint occurs when $\sum^n_{i=1} w_i = \sum^n_{i=1} v_i$.
+\end{defn}
+
+Note that the first summation denotes scalar addition whereas the second denotes vector addition.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Description}
+In this section, an explanation of how the Series Method operates is provided. The Series Method is an implementation of the following series:
+
+\begin{equation}\label{series}
+    \mathbb{P}^{(M)}_{s^{(2)},s^{(1)}} = \sum_{i \in \texttt{SBWC}(s^{(1)}, s^{(2)})} \Bigg[\prod_{k=1}^n {s^{(1)}_k \choose i}  \bigg[ \prod_{t=1}^n p_{t,k}^{i_t} \bigg] \Bigg]
+\end{equation}
+
+where \texttt{SBWC} and \texttt{WC} are defined above and $p_{t,k}$ are elements of $\mathbb{P}^{(I)}$. It should be noted that every $i$ is a vector and that ${s^{(1)}_k \choose i}$ is a multinomoial choose operation. The intuition empowering this series formula is hinted within the description of the VSEA, but is stated explicitly below.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Intuition}
+In this section, an intuitive explanation of why the Series Method operates successfully is provided.
+
+In transitioning from $s^{(1)}$ to $s^{(2)}$, every bin in $s^{(1)}$ may distribute its contents among any of the bins in any permissible way. The one constraint restricting the number of these possible distributions is the \textit{resistance}, $s^{(2)}$ and the cumulative allotment of individuals donated by previously parsed bins. In other words, the total amount of ``content'' gifted to any particular bin from all bins in $s^{(1)}$, the \textit{support}, must equal the amount of ``content'' that bin ought to contain in $s^{(2)}$.
+
+The total number of ways of using a particular set of individuals' movements to achieve any particular distribution of individuals $s^{(2)}$ from $s^{(1)}$ is given by $\prod_{k=1}^n {s^{(1)}_k \choose i}$ for a given successively-constrained weak composition $i$. The probability of any single one of these sets of movements occurring is given by $\prod_{t=1}^n p_{t,k}^{i_t}$, where all $p_{t,k}$ are elements of $\mathbb{P}^{(I)}$.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Performance}
+The Series Method has a runtime of $O(Q(N,n) \cdot G(N,n) \cdot n^2 \cdot {N+n-1 \choose n-1}^2 )$. This can be derived by simply looking at Equation (\ref{series}) and noting that the summation and two product operators are embedded within one another. To get one out of the many ${N+n-1 \choose n-1}^2$ elements of $\mathbb{P}^{(M)}$, $n$ calculations in the innermost product operators must be calculated $n$ times over, by virtue of the second product operator, which must in turn be computed $Q(N,n)$ times over by virtue of the summation. $Q(N,n)$ is the total number of \textit{successively-bounded weak compositions} \textit{supported} by $v$ and \textit{resisted} by $w$ where $(v,w) \in \texttt{WC}(N,n) \times \texttt{WC}(N,n)$. In particular:
+
+\[
+Q(N,n) \coloneqq \abs*{\{\texttt{SBWC($v, w$)} | (v,w) \in \texttt{WC}(N,n) \times \texttt{WC}(N,n) \}}
+\]
+
+Finally, $G(N,n)$ is the worst-case complexity in generating $\texttt{SBWC}(s^{(1)}, s^{(2)})$ \footnote{The algorithm generating $\texttt{SBWC}(s^{(1)}, s^{(2)})$ may be sped up from the insights provided by Page's work on restricted weak compositions: \cite{Page2012}}. In lieu of providing a detailed worst-case runtime complexity for the Series Method, its real-time runtime for various inputs is recorded in a later section alongside all other methods.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Relation to Relaxation of the Independence Assumption} \label{sssec:relaxIndep}
+Two ways of dealing with the relaxation of the Independence Assumption are outlined below:
+
+\textbf{1. Quick-and-Dirty Approach:} We may choose to remove certain elements from SBWC, suggesting that only certain distributions of individuals are allowed and the calculated $\mathbb{P}^{(M)}$ can be normalized after the series calculation has touched every element in $\mathbb{P}^{(M)}$ (the ``Quick'' part). There's little theory backing the efficacy of this process and it does not generalize to situations involving a relaxed Identityless Assumption (the ``Dirty'' part).
+
+\textbf{2. Formal Approach:} This process allows for the relaxation of both core assumptions of the direct methods but is bound to live just as theory for the foreseeable future as it would require a massive amount of data to put into practice. Consider again Equations (\ref{eq:4}), only this time, let $\mathbb{P}^{(I)}_i$ and $\pi_i$ be massively larger than before. They now become very-high-dimensional tensors. Let's consider a supposedly simple case, when $n=2$. Each element of $\mathbb{P}^{(I)}_1$ would be the probability of individual of type 1 moves from one bin to another given the presence of a certain number of type 2 individuals in bin 1, a certain number of type 2 individuals in bin 2, certain number of type 3 individuals in bin 1, etc. Clearly, the relaxation of this assumption quickly becomes unbearable despite being theoretically possible.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\section{Summary of Methods and Performance}
+Here, we list charts associating methods to their worst-case or expected runtimes.
+
+For all subsections within this section:
+\begin{itemize}
+    \item $L$ is maximum bit-length of any number in input, with randomized Simplex Algorithm.
+    \item $d$ is the employed digit precision.
+    \item $\psi^{(0)}$ is the $0^{th}$ derivative of the digamma function (i.e. the digamma function itself).
+    \item $\gamma$ is the Euler-Mascheroni Constant.
+\end{itemize}
+
+We also provide the real-time runtimes of each method that result from using various parameter or input values so we may better understand how each method performs in practice.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Methods for Finding an Optimal $\mathbb{P}^{(I)}$ when $n=2$}
+In this section, we list the runtime complexities (the worst-case runtime for deterministic methods and expected runtime for probabilistic methods) for all ``$n=2$''-case direct methods. We then show their real-time performances for various parameter values.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Complexities}
+In practice, rS, bS, and brS all finish execution in a matter of seconds. All direct methods were tested on a computer with a single processor with values of $n \in {2, \dots, 14}$.
+
+\begin{center}
+\begin{tabular}{c|c}
+    Method & Complexity \\
+    \hline
+    rS & $O(F(d)10^d)$ \\
+    bS & $O(F(d)\text{log}(d))$ \\
+    brS & $O(F(d)\text{log}(d))$
+\end{tabular}
+\end{center}
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Real-Time Runtimes}
+All direct methods have a threshold parameter $\epsilon$ that determines whether or not our solutions is sufficiently correct. In particular, we run each algorithm until
+
+\[
+\norm{P\pi - \pi} < \epsilon
+\]
+
+where $P$ is the candidate value for $\mathbb{P}^{(I)}$ for a given $\pi$. In this section, we vary that $\epsilon$ parameter and note the differences in real-time runtimes that consequently surface between ``$n=2$''-case direct methods. Figure (\ref{fig:2,300}) plots the real-time runtimes for bS, rS, and brS for various epsilon values. For each epsilon, we average the real-time runtimes of each algorithm across 300 trials on the same ``$n=2 \times 1$''-size $\pi$. In Figure (\ref{fig:2,100k}), we plot the same information with 100,000 trials. The anticipated indirect relationship is far more apparent in Figure (\ref{fig:2,100k}). In both cases, rS performs relatively worse than bS and brS though not by much, and brS performs slightly better than bS.
+
+\begin{center}
+    \begin{figure}[h!]
+      \centering
+      \includegraphics[scale=0.5]{graphs/2.png}
+      \caption{With 300 trials}
+      \label{fig:2,300}
+    \end{figure}
+
+    \begin{figure}[h!]
+      \centering
+      \includegraphics[scale=0.5]{graphs/another2.png}
+      \caption{With 100,000 trials}
+      \label{fig:2,100k}
+    \end{figure}
+\end{center}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Methods for Finding an Optimal $\mathbb{P}^{(I)}$ when $n \geq 2$}
+In this section, we list the runtime complexities (the worst-case runtime for deterministic methods and expected runtime for probabilistic methods) for all $n \geq 2$ direct methods. We then show their real-time performances for various inputs. We divide this section into 2 subsections: reliable (LP, GI) and unreliable methods (NRS, GRS, CMA-ES). The former class tend to always finish execution for small $n$ on a single processor in a reasonable amount of time. The latter class tends to be less dependable in this respect. Remember that for all methods in all classes except LP, iteration limits can be imposed to sacrifice accuracy for a lower runtime.
+
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Complexities}
+Here, we list the worst-case or expected runtimes for all $n >= 2$-case direct methods.
+
+\begin{center}
+\begin{tabular}{c|c}
+    Method & Complexity \\
+    \hline
+    LP & $O(n^3L)$ with high probability \cite{simplex} \cite{simplexTime} \cite{simplexRand} \\
+    NRS & $O(F(d)10^{dn})$ \\
+    GRS & N/A \\
+    GI \cite{wolfGI} & ${n \choose 2}(\psi^{(0)}({n \choose 2} + 1) + \gamma)$ \\
+    CMA-ES & N/A
+\end{tabular}
+\end{center}
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Real-Time Runtimes}
+Here, we provides graphs showing the real-time runtimes for all $n >= 2$-case direct methods for various $n$ values. In the case of the reliable methods, for each $n \in \{2, 3, 4, 5\}$, we plot the average runtime over 8 trials vs. the $n$-value. In the case of the unreliable methods, for each $n \in \{2,\dots, 10\}$, we plot the proportion of times the algorithm finishes running in $60n$ seconds.
+
+%%
+\textbf{Reliable Methods (LP, GI):}
+
+LP, with the objective of maximizing the objective function $\texttt{trace}(\mathbb{P}^{(I)})$, was by far the fastest algorithm but only returned results resembling the Identity Matrix. The diagonal elements were often $1-t(n-1)$, where $t$ is the tolerance used to measure floating-point equivalence (floating-point numbers $a,b$ satisfy $a=b \iff |a-b| < t$) and the non-diagonal elements tended to be $t$. This rule held true with minimal exceptions.
+
+GI, on the other hand, did not always converge. The author noticed that sometimes, for the same $n$, GI would converge in less than a second for multiple trials. Occasionally, and especially as $n$ increased, GI would appear to get ``stuck'' and either take a very long time to converge or not ever converge. The author noted that the variance in seconds of real-time runtimes for repeated GI trials where $n=5$ was an astounding 13151.8180598. The author speculates that parallelzing GI, implementing dropout, or simply restarting GI if it exceeds a certain time limit ought to all help mitigate this issue.
+
+The expected runtime of GI appeared to be predictive of the actual runtime of GI. Figures (\ref{fig:n2_gi,expgi_lxly}) and (\ref{fig:n2_gi,expgi_ly}) show GI vs. the Expected Runtime of GI (labelled as ``Expected GI''), and (\ref{fig:n2_ratio}) notes the ratio between the actual runtime GI over the Expected GI. The author suspects that this ratio is a rugged, generally increasing function because of the presence of ``outlier trials'' where GI would seem to get stuck. It is these same ``outlier trials'' that account for the large variance mentioned earlier.
+
+\begin{center}
+    \begin{figure}[!h]
+      \centering
+      \includegraphics[scale=0.5]{graphs/n2_both_xlogy.png}
+      \caption{LP and GI real-time runtimes}
+      \label{fig:n2_both}
+    \end{figure}
+
+    \begin{figure}[!h]
+      \centering
+      \includegraphics[scale=0.5]{graphs/n2_lp.png}
+      \caption{LP real-time runtime}
+      \label{fig:n2_lp}
+    \end{figure}
+
+    \begin{figure}[!h]
+      \centering
+      \includegraphics[scale=0.5]{graphs/n2_logxlogy.png}
+      \caption{GI and Expected GI real-time runtime (logy vs. logx)}
+      \label{fig:n2_gi,expgi_lxly}
+    \end{figure}
+
+    \begin{figure}[!h]
+      \centering
+      \includegraphics[scale=0.5]{graphs/n2_xlogy.png}
+      \caption{GI and Expected GI real-time runtime (logy vs. x)}
+      \label{fig:n2_gi,expgi_ly}
+    \end{figure}
+
+    \begin{figure}[!h]
+      \centering
+      \includegraphics[scale=0.5]{graphs/n2_ratio.png}
+      \caption{GI/Expected GI Ratio}
+      \label{fig:n2_ratio}
+    \end{figure}
+\end{center}
+
+%%
+\textbf{Unreliable Methods (NRS, GRS, CMA-ES):}
+
+NRS, GRS, CMA-ES were all considered unreliable because they generally do not produce an output as quickly as LP or GI. Here, we measured the proportion of times out of 8 trials each method returned a solution in $60n$ seconds per each $n \in \{2, \dots, 5\}$. NRS performed miserably, never once returning a solution in the allotted time. CMA-ES performed well for $n<4$, though it did not return a single value in the allotted time once $n>3$. GRS performed the best out of all of these functions, returning a solution for all $n$ except when $n=3$, inexplicably. Figure (\ref{fig:ur}) plots these outcomes.
+
+\begin{center}
+    \begin{figure}[!h]
+      \centering
+      \includegraphics[scale=0.5]{graphs/ur.png}
+      \caption{Proportion of trials the unreliable methods (NRS, GRS, CMA-ES) returned a solution in $60n$ seconds}
+      \label{fig:ur}
+    \end{figure}
+\end{center}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Methods for Generating $\mathbb{P}^{(M)}$}
+In this section, we list the worst-case runtime complexities for all methods of generating $\mathbb{P}^{(M)}$. We then show their real-time performances for various inputs.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Complexities}
+Here, we list the worst-case runtime complexities for the $\mathbb{P}^{(M)}$-generating methods. Again, all methods for generating $\mathbb{P}^{(M)}$ were tested on a computer with a single processor with values of $n \in \{2,3,4\}$, $N \in \{2, \dots, 30\}$. The VSEA quickly explodes in runtime from a matter of seconds to hours for increasing $n$ and $N$. The Series Method tends to always take matters of seconds, but it was not tested for very large values of $n$ or $N$.
+
+\begin{itemize}
+    \item VSEA - $O\bigg( {N+n-1 \choose n-1}^2 {2N+n!-1 \choose N+n!-1} (n! + N) \bigg)$
+    \item Series Method - $O(Q(N,n) \cdot G(N,n) \cdot n^2 \cdot {N+n-1 \choose n-1}^2 )$ where $Q(N,n)$ is the total number of successively bound weak compositions supported by $v$ and resisted by $w$ where $(v,w) \in \texttt{WC}(N,n) \times \texttt{WC}(N,n)$ $G(N,n)$ is the worst-case complexity in generating $\texttt{SBWC}(s^{(1)}, s^{(2)})$.
+\end{itemize}
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Real-Time Runtimes}
+Here, we list graphs showing the real-time runtimes for the $\mathbb{P}^{(M)}$-generating methods for various $(n,N)$-tuples values.
+
+\begin{center}
+    \begin{figure}[!h]
+      \centering
+      \includegraphics[scale=0.5]{graphs/m.png}
+      \caption{VSEA and Series plot}
+      \label{fig:m}
+    \end{figure}
+
+    \begin{figure}[!h]
+      \centering
+      \includegraphics[scale=0.5]{graphs/m_series.png}
+      \caption{Series only plot}
+      \label{fig:series}
+    \end{figure}
+\end{center}
+
+The test cases were the following:
+
+\begin{center}
+\begin{tabular}{c|c|c|c|c}
+    Test Case & n & N & VSEA (s) & Series (s) \\
+    \hline
+    1 & 2 & 2 & 2.51793861e-03 & 0.01140809 \\
+    2 & 10 & 2 & 6.66585207e-01 & 0.03999686 \\
+    3 & 14 & 2 & 2.98541307e+00 & 0.09832096 \\
+    4 & 21 & 2 & 2.03708050e+01 & 0.31426907 \\
+    \hline
+    5 & 30 & 2 & 1.14650161e+02 & 0.93162298 \\
+    6 & 32 & 2 & 1.57767011e+02 & 1.14047718 \\
+    7 & 2 & 3 & 3.02648544e-02 & 0.0084362 \\
+    8 & 2 & 4 & 1.26263905e+00 & 0.03489685 \\
+    \hline
+    9 & 2 & 5 & 1.56787947e+02 & 0.11156487 \\
+    10 & 4 & 4 & 1.30491586e+03 & 1.10382104
+\end{tabular}
+\end{center}
+
+For larger $n,N$, both methods tend to quickly explode in real-time runtime.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\section{Applications}
+Why may we need to obtain a $\mathbb{P}^{(I)}$ from a given $\pi$? This section answers that question by example. In general, applications require the following specifications: ``Setting, Individuals, Bins, Welfare Function.'' The ``setting'' is the context within which individuals move about and the bins are intrinsic to the setting. The ``individuals'' are the actors who we categorize into some set of bins. The ``bins'' are the classes or categories intrinsic to the setting. Moreover, the distribution of individuals among bins is assumed to contribute, in some arbitrary way, to the ``welfare function,'' which we seek to maximize or minimize. The determination of $\pi$, which is to occur before any algorithm developed in this paper is applied, is assumed to be the ideal distribution of individuals among all bins that maximizes or minimizes the welfare function. This distribution may be found through \textit{integer programming} or some other optimization procedure.
+
+For all applications, we will continue to hold the Identityless and Independence Assumptions for simplicity's sake, but we are in no way suggesting that these assumptions hold realistic merit and encourage further research to explore their relaxations.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Society, Citizens, Income, GDP/Welfare}
+Consider a society with individual citizens distributed among income classes. Perhaps its citizens intend to maximize its GDP or their overall welfare. Perhaps they also know how they would distribute themselves among income classes to optimize one or both objective functions. How do they alter public policy to converge to the optimal distribution? Apply any one of the previously mentioned direct methods of calculating $\mathbb{P}^{(I)}$. It ought to be noted that this situation is similar to the context ``Company, Employees, Wage, Profit,'' where a company seeks to maximize its profit by optimally distributing its employees among wage brackets.
+
+What is the significance of the Identityless and Independence Assumptions in this context? The former implies that all individuals experience the same impact of the same ``policies'' $\mathbb{P}^{(I)}$ whereas the latter implies that the experiences of individuals are unaffected by others. This is not necessarily how policies and people actually operate.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{National Economy, Citizens, Rich-Poor, Wealth}
+This subsection presents an application to sustainable inequality management. The normative models presented by Galor and Zeira (1992) and the empirical evidence collected and corroborated by Kravis (1960), Lydall (1968) and the World Bank (1988, 1989, 1990, 1991) suggest that equity of income is correlated with income per capita. Tabellini (1990) also corroborates this claim but goes further to say that equity is also correlated with the rate of economic growth. \cite{GalorZeira}
+
+Clearly, there exists an incentive for any nation to distribute income equally among its citizens i.e. for $\forall i \in \{1 \dots n\}; \pi_i = \frac{1}{n}$, and we know from the previous section that we can apply any of the direct methods to find the optimal set of policies $\mathbb{P}^{(I)}$ to guarantee convergence of a population to some $\pi$ in a ``Society, Citizens, Income, GDP/Welfare'' context. Furthermore, we may borrow, from Galor and Zeira, the 2-bin classification of individuals: the skilled workers who invest their wealth in human capital and the unskilled workers who largely borrow wealth from the former class. Our problem now is much clearer: Find a $\mathbb{P}^{(I)}$ given that $n=2, \pi^T = [\frac{1}{2}, \frac{1}{2}]$. Methods as simple as rS, bS, and brS may even be applied to this end.
+
+Of course many solutions may be calculated. To demonstrate these algorithms in action, rS was selected to run six times, and for the input \texttt{rS(2, np.array([0.5,0.5]))} the following output was returned:
+
+\[
+\begin{bmatrix}
+    0.9724358 & 0.0275642 \\
+    0.0275642 & 0.9724358
+\end{bmatrix}
+,
+\begin{bmatrix}
+    0.36960558 & 0.63039442 \\
+    0.63039442 & 0.36960558
+\end{bmatrix}
+,
+\begin{bmatrix}
+    0.4378469 & 0.5621531 \\
+    0.5621531 & 0.4378469
+\end{bmatrix}
+\]\[
+\begin{bmatrix}
+    0.65705714 & 0.34294286 \\
+    0.34294286 & 0.65705714
+\end{bmatrix}
+,
+\begin{bmatrix}
+    0.75512384 & 0.24487616 \\
+    0.24487616 & 0.75512384
+\end{bmatrix}
+,
+\begin{bmatrix}
+    0.32285924 & 0.67714076 \\
+    0.67714076 & 0.32285924
+\end{bmatrix}
+\]
+
+Call this output set $A$. Clearly $A$ holds many different values for $\mathbb{P}^{(I)}$, but we should choose the value that is most similar to our current $\mathbb{P}^{(I)}$. This will minimize the amount of policy changes that need to be enacted and enforced to prompt society's convergence toward optimal wealth. Three methods are provided below to aid in finding a society's current $\mathbb{P}^{(I)}$ given their current assortment of policies.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Appeal to Regularization(s)}
+First, one may appeal to any regularization -- choose a proposed $\mathbb{P}^{(I)}$ with the largest eigengap or trace, as discussed earlier. For situations involving larger $n > 2$, this approach may be impractical, because generating potential $\mathbb{P}^{(I)}$ may be costly (especially if some property of $\mathbb{P}^{(M)}$ is exploited) and values for $\mathbb{P}^{(I)}$ that maximize some regularization are found through an exhaustive search.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Long-Run Assertion}
+Alternatively, one may decide to assume their nation already exists in the ``long-run,'' in which case their current distribution of ``skilled'' and ``unskilled'' people, as defined earlier, is taken to be $\pi$. Direct methods can then be applied thereafter to generate $\mathbb{P}^{(I)}$. These generated $\mathbb{P}^{(I)}$ may all have characteristics similar to only a subset of $A$. The issue is that the society may not actually be in the ``long-run'' -- public policies that were recently enacted may be forcing the society to tend toward a different $\pi$.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Estimate Current $\mathbb{P}^{(I)}$}
+Finally, one may choose to estimate their current $\mathbb{P}^{(I)}$ directly from available, updated census data. For example, we can find an \textit{maximum likelihood estimator (MLE)} for each element in the current $\mathbb{P}^{(I)}$. Fix one time step to be amount of time between any 2 census surveys. Organize the census data such that $X = (x_i)^D_{i=1}$ where
+
+\[
+\forall i \in \{1 \dots D\}; x_i = \left \{ \begin{tabular}{cc}
+  [1,0,0,0] & \text{if person $i$ remained ``skilled''} \\
+  {[0,1,0,0]} & \text{if person $i$ moved from ``unskilled'' to ``skilled''} \\
+  {[0,0,1,0]} & \text{if person $i$ moved from ``skilled'' to ``unskilled''} \\
+  {[0,0,0,1]} & \text{if person $i$ remained ``unskilled''}
+  \end{tabular} \right \}
+\]
+
+In the absence of the Long-Run Assertion, we would have the following optimization problem to solve:
+
+\[
+\theta^*
+= [p_{11}^*, p_{22}^*]
+= \text{argmax}_{\theta \in [0,1]^2} L(\theta|X)
+= \text{argmax}_{\theta \in [0,1]^2} P(X|\theta)
+\]\[
+= \text{argmax}_{\theta \in [0,1]^2} \prod^D_{i=1} P(x_i|\theta)
+\]\[
+= \text{argmax}_{\theta \in [0,1]^2} \sum^D_{i=1} \text{log}(P(x_i|\theta))
+\]\[
+= \text{argmax}_{\theta \in [0,1]^2} \bigg[
+    \sum^{D_1}_{i=1} \text{log}(p_{11})
+    + \sum^{D_2}_{i=1} \text{log}(1-p_{22})
+    + \sum^{D_3}_{i=1} \text{log}(1-p_{11})
+    + \sum^{D_4}_{i=1} \text{log}(p_{22})
+\bigg]
+\]\[
+= \text{argmax}_{\theta \in [0,1]^2} \big[
+    D_1\text{log}(p_{11})
+    + D_2\text{log}(1-p_{22})
+    + D_3\text{log}(1-p_{11})
+    + D_4\text{log}(p_{22})
+\big]
+\]
+
+where $D_1 + D_2 + D_3 + D_4 = D$. Taking the gradient of both sides with respect to the elements of $\mathbb{P}^{(I)}$ and setting the entire gradient to $\vec{0}$, the $1 \times 2n$ zero vector:
+
+\[
+\vec{0}
+= \nabla \text{log}(P(X|\theta))
+= \bigg[ \frac{D_1}{p_{11}} - \frac{D_3}{1-p_{11}}, \frac{D_4}{p_{22}} - \frac{D_2}{1-p_{22}} \bigg]
+\]\[
+\Rightarrow
+D_3 p_{11} = D_1 (1-p_{11})
+\text{ and }
+D_2 p_{22} = D_4 (1-p_{22})
+\]\[
+\Rightarrow
+D_1 = p_{11} (D_1 + D_3)
+\text{ and }
+D_4 = p_{22} (D_4 + D_2)
+\]\[
+\therefore
+p_{11}^* = \frac{D_1}{D_1 + D_3}
+\text{ and }
+p_{22}^* = \frac{D_4}{D_2 + D_4}
+\]
+
+where $L(\theta|X)$ is the likelihood function for parameters $\theta$ and data $X$, $D_1$ is the number of data samples (people) that remain skilled across any time step, $D_2$ is the number of people that move from unskilled to skilled across any time step, $D_3$ is the number of people that move from skilled to unskilled across any time step, and $D_4$ is the number of people that remain unskilled across any time step.
+
+If the Long-Run Assertion is used in conjunction with this estimation method, then we would begin just as we did before, by taking the logarithm of the MLE:
+
+\[
+[p_{11}^*, p_{22}^*]
+= \text{argmax}_{\theta \in [0,1]^2} L(\theta|X)
+= \text{argmax}_{\theta \in [0,1]^2} \sum^D_{i=1} \text{log}(P(x_i|\theta))
+\]
+
+However, we need to impose a new constraint in light of the Long-Run Assertion; We need to enforce that we exist in the ``long-run'' of our current $\mathbb{P}^{(I)}$, which suggests that:
+
+\[
+M(\theta)\pi = \pi
+\]
+
+which is equivalent to:
+
+\[
+\norm{ \texttt{M}(\theta)\pi - \pi }^2 = 0
+\]
+
+where
+
+\[
+\texttt{M}: [a, b] \mapsto \begin{bmatrix}
+    a & (1-b) \\
+    (1-a) & b
+\end{bmatrix}
+\]
+
+is our ``current $\mathbb{P}^{(I)}$.'' So we modify our objective function to now be:
+
+\[
+f(\theta, \lambda) = \sum^D_{i=1} \text{log}(P(x_i|\theta)) - \lambda \norm{ \texttt{M}(\theta)\pi - \pi }^2
+\]
+
+But we also know that both Equation (\ref{eq:2}) and Constraint (\ref{eq:3}) must hold whenever a $2 \times 2$ transition matrix has stationary distribution $\pi$. In other words, we can write our entire $\mathbb{P}^{(I)}$ in terms of a single parameter, $p \coloneqq p_{22}$. Therefore, our optimization problem simplifies to the following form:
+
+\[
+p^*
+= \text{argmax}_{p \in [1-\frac{\pi_1}{\pi_2},1]} \bigg[ \text{log}(L(p|X)) - \norm{ \texttt{M}(p,\pi)\pi - \pi }^2 \bigg]
+\]
+
+where
+
+\[
+\texttt{M}: [a,\pi] \mapsto \begin{bmatrix}
+    1-(1-a)\frac{\pi_2}{\pi_1} & (1-a) \\
+    (1-a)\frac{\pi_2}{\pi_1} & a
+\end{bmatrix}
+\]
+
+Let us discuss why the second term, $-\lambda \norm{ \texttt{M}(p,\pi)\pi - \pi }^2$, exists as a consequence of the Long-Run Assertion. The matrix $\texttt{M}(p,\pi)$ is the estimate of the current $\mathbb{P}^{(I)}$, and the Long-Run Assertion tells us that our economy of interest already exists in the long-run. Therefore, $\texttt{M}(p,\pi)\pi = \pi$. We want to minimize the extent to which this equality is not true, hence why we penalize the entire objective function whenever the difference between $\texttt{M}(p,\pi)\pi$ and $\pi$ is nonzero. The difference between vectors is classically given by the $L_2$-norm. We multiply this difference by $-\lambda$ for some $\lambda > 0$ because, again, we seek to penalize the objective function, which we intend maximize, whenever this difference exists. The $\lambda$ is the extent to which we care about minimizing this difference.
+
+Notice how the Long-Run Assertion acts simply as a regularization term within our MLE calculation, weighted by $\lambda$, penalizing any deviation between $\texttt{M}(p,\pi)\pi$ and $\pi$ for some $p$. This type of regularization, utilizing the $L_2$-norm, is called \textit{$L_2$ Regularization}.
+
+We may elect to treat this as an application of the method of \textit{Lagrange Multipliers}, with multiplier $\lambda$. A necessary condition for this Lagrange Multiplier problem is that the function $f(p, \lambda)$ has a critical point and this implies that $\frac{\partial}{\partial p} \text{log}(L(p|X)) - \lambda \frac{\partial}{\partial p} \norm{ \texttt{M}(p,\pi)\pi - \pi }^2 = 0$ and $\norm{ \texttt{M}(p,\pi)\pi - \pi }^2 = 0$. For a crucial reason, we will analyze the latter condition and \textit{then} solve for the former condition.
+
+
+\textbf{The latter condition:}
+
+\[
+\norm{ \texttt{M}(\theta)\pi - \pi }^2
+= (p_{11}\pi_1 + (1-p)\pi_2- \pi_1)^2
+    + ((1-p_{11})\pi_1 + p\pi_2 - \pi_2)^2
+\]\[
+\Rightarrow 0
+= \norm{ \texttt{M}(\theta)\pi - \pi }^2
+\Rightarrow
+(p_{11}\pi_1 + (1-p)\pi_2 - \pi_1)^2
+=
+-((1-p_{11})\pi_1 + p\pi_2 - \pi_2)^2
+\]
+
+which leaves us with only 1 situation for which there exists a real-valued solution $p$, namely when:
+
+\[
+p_{11}\pi_1 + (1-p)\pi_2 - \pi_1
+=
+(1-p_{11})\pi_1 + p\pi_2 - \pi_2
+\]
+
+we must enforce this, and the importance of this enforcement will soon become crucial.
+
+
+\textbf{The former condition} and remembering that $p_{11} = 1-(1-p)\frac{\pi_2}{\pi_1} \Rightarrow \frac{\partial}{\partial p} p_{11} = -\frac{\pi_2}{\pi_1}$, we have:
+
+\[
+\frac{\partial}{\partial p} f(p, \lambda)
+= \frac{\partial}{\partial p} \bigg[
+    \sum^{D_1}_{i=1} \text{log}(p_{11})
+    + \sum^{D_2}_{i=1} \text{log}(1-p)
+    + \sum^{D_3}_{i=1} \text{log}(1-p_{11})
+    + \sum^{D_4}_{i=1} \text{log}(p)
+    - \lambda \norm{ \texttt{M}(p,\pi)\pi - \pi }^2
+\bigg]
+\]\[
+= \frac{\partial}{\partial p} \big[
+    D_1\text{log}(p_{11})
+    + D_2\text{log}(1-p_{22})
+    + D_3\text{log}(1-p_{11})
+    + D_4\text{log}(p_{22})
+\]\[
+    \hspace{4cm}
+    - \lambda (p_{11}\pi_1 + (1-p)\pi_2 - \pi_1)^2
+    - \lambda ((1-p_{11})\pi_1 + p\pi_2 - \pi_2)^2
+\big]
+\]\[
+=
+    \frac{-D_1}{p_{11}}\frac{\pi_2}{\pi_1}
+    + \frac{-D_2}{1-p}
+    + \frac{D_3}{1-p_{11}}\frac{\pi_2}{\pi_1}
+    + \frac{D_4}{p}
+    - 2\lambda (p_{11}\pi_1 + (1-p)\pi_2 - \pi_1) (-2\pi_2)
+    - 2\lambda ((1-p_{11})\pi_1 + p\pi_2 - \pi_2) (2\pi_2)
+\]\[
+=
+    \frac{-D_1}{p_{11}}\frac{\pi_2}{\pi_1}
+    + \frac{-D_2}{1-p}
+    + \frac{D_3}{1-p_{11}}\frac{\pi_2}{\pi_1}
+    + \frac{D_4}{p}
+    - 4\pi_2\lambda \big( -p_{11}\pi_1 - (1-p)\pi_2 + \pi_1 + (1-p_{11})\pi_1 + p\pi_2 - \pi_2 \big)
+\]
+
+From ``The latter condition,'' we know that the last term is simply 0. We are ready to now set $\frac{\partial}{\partial p} f = 0$ to solve for $p^*$:
+
+\[
+\frac{\partial}{\partial p} f(p, \lambda)
+= 0
+=
+    \frac{-D_1}{p_{11}}\frac{\pi_2}{\pi_1}
+    + \frac{-D_2}{1-p}
+    + \frac{D_3}{1-p_{11}}\frac{\pi_2}{\pi_1}
+    + \frac{D_4}{p}
+=
+    \frac{D_1}{1-p-\frac{\pi_1}{\pi_2}}
+    + \frac{D_3-D_2}{1-p}
+    + \frac{D_4}{p}
+\]
+
+We expect there to exist a value for $p$ that solves the above equation for various values of constants $D_1, D_2, D_3, D_4$, and $\pi$. We also expect there to be permutations of constant values for which a solution for $p$ does not exist. Regardless, it may be impossible to write an explicit formula for $p^*$ given the overconstrained nature of the problem -- we not only subject $p$ to Constraint (\ref{eq:3}), but to the Long-Run Assumption as well. The \textit{concavity/convexity} of $f$ is also difficult to determine, so algorithms such as \textit{gradient descent} cannot immediately be used to find $p^*$ (unless a specific domain of $p$ for which $f$ is concave/convex is found). Considering how small the search space $[1-\frac{\pi_1}{\pi_2},1]$ is, an exhaustive search of all possible values of $p$ to some digit precision $d$ may be practical. Such a search would incur a worst-case complexity of $O(\frac{\pi_1}{\pi_2}F(d)10^d)$, where $F(d)$ is the cost of $d$-digit precision arithmetic.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Nation, Genomes, Income, Income-per-Capita}
+This section presents an application to optimal genetic diversity policy as prescribed by Oded Galor. Galor notes that management of the genetic diversity of a nation aims to balance genetic diversity's ``negative effect on the cohesiveness of society'' with its ``positive effect on innovations.'' Genetic diversity tends to increase mistrust among a citizenry and the amount of civil conflicts, which both tend to lead to inefficiencies in a macroeconomy relative to its \textit{production possibility frontier} (everything that a macroeconomy can produce while operating at its peak efficiency). However, genetic diversity also ``fosters innovations & expands the production possibilities.'' Clearly, striking an optimal balance is of concern to those that value their society and can enact relevant policy change. Methods of managing national genetic diversity include the management of immigration and emigration policies and social norms that determine genetic mixing rates. \cite{OdedSlides}
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Calculating and Managing Diversity}
+To calculate genetic diversity, we use the Index of Genetic Diversity from the online appendix to the work of Quamrul Ashraf and Oded Galor \cite{geneticDiv}, which takes the following form:
+
+\[
+\mathbb{E}[H^{i,j}] = \frac{\theta_i\mathbb{E}[H^i] + \theta_j\mathbb{E}[H^j]}{1-F^{i,j}}
+\]
+
+where $N$ is the total population size, $\theta_i$ is the share of people of ethnicity $i$ in a group of people, $H^i$ is the \textit{heterozygosity} (genetic diversity) of ethnicity of $i$, $H^{i,j}$ is the heterozygosity of a population consisting of $\theta_iN$ member of ethnicity $i$ and $\theta_jN$ members of ethnicity $j$, $F^{i,j}$ is the \textit{genetic distance} between ethnicities $i,j$ and $i,j \in \{1, \dots, k\}$ when we consider $k$ ethnicities. Oftentimes, regions and countries consist of more than 2 ethnicities, in which case, the procedure of calculating $\mathbb{E}[H^{i,j}]$ is applied recursively i.e. $\mathbb{E}[H^i] \coloneqq \mathbb{E}[H^j], \theta_i \coloneqq \theta_j, j \coloneqq j+1$.
+
+Unfortunately, $F^{i,j}$ values only exist for 53 ethnic groups (or pairs thereof), so instead of the above index, parametric estimates of $F^{i,j}$ and $\mathbb{E}[H^i]$ have been formulated. It has been empirically shown that $\mathbb{E}[H^i]$ is strongly, negatively correlated with $d_i$, the distance between that ethnicity's geographic location in 1 C.E. and East Africa (the alleged birthplace of humanity). Additionally, $F^{i,j}$ has been empirically shown to be strongly, positively correlated with $d_ij$, the \textit{pairwise migratory distance} between ethnicities $i$ and $j$ (the geographic distance between these ethnicities' regions of origin). With this in mind, the following parametric index of genetic diversity is often employed:
+
+\[
+\mathbb{E}[\hat{H}^{i,j}] = \frac{\theta_i\mathbb{E}[\hat{H}^i(d_i)|d_i] + \theta_j\mathbb{E}[\hat{H}^j(d_j)|d_j]}{1-\hat{F}^{i,j}(d_j)}
+\]
+
+If we were to use ``country of origin'' as a proxy for ethnicity, then $i,j$ would parse over all indices possible countries of origin instead of indices of all ethnicities, and $\hat{H}^i(d_i)$ would be the heterozygosity of country $i$ that is a distance $d_i$ from East Africa.
+
+Oded Galor \textit{et al.} \cite{OdedSlides} already empirically found the ``ideal,'' income-per-capita maximizing value for $\mathbb{E}[H^i]$, which is $\hat{H}^* = 0.2792$. For context, the U.S. is $\hat{H}^{U.S.} = 0.2794$, a tad more diverse than the empirically optimum expected heterozygosity \cite{OdedSlides}. Given $\mathbb{E}[\hat{H}^{i}]$ and $F^{i,j}, \forall i,j \in \{1, \dots, k\}$, we can solve for a vector $\vec{\theta}^* = (\theta_1, \dots, \theta_k)$ that minimizes $\hat{H}^* - \hat{H}^{l}$ for a country $l$ with with immigrants and citizens hailing from a total of $k$ different countries, enumerated as $\{1, \dots, l, \dots, k\}$. We can solve for $\vec{\theta}^*$ using \textit{dynamic programming} (also called \textit{memoization}), a method of optimizing recursively-defined functions that stores all potentially optimum values of subproblems in tables. In this case, there are $k$ subproblems, which each solve for a $\theta_i, i \in \{1, \dots, k\}$. Again, finding an ideal $\vec{\theta}^*$, which is related to our ideal $\pi$, is beyond the scope of this paper. In practice, upon finding $\vec{\theta}^*$, we will learn to what extent we should adjust our immigration or emigration rates for a particular nationality to better optimize our income-per-capita.
+
+%%%%%%%%%%%%%%%%\
+\subsubsection{Genomic Diversity Model}
+We will again use ``country of origin'' as proxy for genetic diversity and assume we have access to $\mathbb{E}[\hat{H}^i]$ and $F^{i,j}$ for each country $i$ and  assert that there are $k$ countries of origin that their citizens can either be found domestically or abroad. Thus, there are 2 bins per country of origin. Using $\mathbb{E}[\hat{H}^i]$ values per each $i$ nation as opposed to each $i$ ethnicity allows our model to permit genetic mixing within nations. We end up with multiple $\mathbb{P}^{(I)}_i$ and $\pi_i$, in particular one per each nation $i$. Our model is:
+
+\[
+\forall i \in \{1, \dots, k\}
+\]\[
+\mathbb{P}^{(I)}_i
+= \begin{bmatrix}
+    p^{(i)}_{dd} & p^{(i)}_{ad} \\
+    p^{(i)}_{da} & p^{(i)}_{aa}
+\end{bmatrix}
+\]\[
+\pi_i
+= \begin{bmatrix}
+    \theta_i \\
+    1 - \theta_i
+\end{bmatrix}
+\]
+
+Note how this situation is identical to the $n=2$ case of Equation (\ref{eq:4}), which represents what occurs upon relaxation of the Independence Assumption.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Generalization of Applications}
+In this section, we abstractly define the space of all possible applications of the methods discussed in this paper.
+
+Define an \textit{Application Space} to be any ordered pair $(n,N,\rho)$ where $n,N \in \mathbb{N}, n \geq 2, N \geq 1$, and $\rho : U \subset \mathbb{R}^n \rightarrow \mathbb{R_+}$, where $\mathbb{R_+}$ are the nonnegative real numbers and $U$ is the set of all elements of \texttt{WC}$(N,n)$, each normalized to 1. Let $\rho$ be a \textit{preference metric} -- our means of rating all $\pi$ we could possibly seek given parameters $n$ and $N$. The more we wish to converge to a particular $\pi$, the larger the value of $\rho(\pi)$. More concretely:
+
+\[
+\forall \vec{x},\vec{y} \in U;  \vec{x} \prec \vec{y} \Rightarrow \rho(\vec{x}) < \rho(\vec{y})
+\]
+
+where $\vec{x} \prec \vec{y}$ means ``we prefer $\vec{y}$ more than $\vec{x}$.'' Examples of preference functions may be GDP -- a nation's GDP may vary as the distribution of its people among income classes varies, so we prefer population distributions associated with a greater GDP value. If we were to enumerate all of these possible $\pi_i$ and sum them with weights $\rho(\pi_i)$, we would arrive at the $\pi$ to which we seek to converge. In other words, if $s = {N+n-1 \choose n-1}$,
+
+\[
+\pi = \sum^s_{i=1} \rho(\pi_i)\pi_i
+\]
+
+We can then find a $\mathbb{P}^{(I)}$ that converges to this $\pi$ using the previously mentioned methods. Note how this summation over all possible $\pi_i$ is the same as summing over all elements of the first eigenvector of $\mathbb{P}^{(M)}$, as described in Section (\ref{sec:defpm}).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\section{Conclusion}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Summary}
+In this paper, we worked backwards relative to what is taught in most undergraduate courses concerning MCs; We learned the various ways of solving for a transition matrix given a stationary distribution. After motivating the problem, we defined all relevant definitions and then described several methods for directly solving for what we called the individual matrix, $\mathbb{P}^{(I)}$, namely: bS, rS, brS, LP, NRS, GRS, GI, and CMA-ES. Worst-case and expected time complexities were provided when available. Complexity calculations were provided for neither GRS nor CMA-ES. In our discussion on the CMA-ES, we took a detour into mixing times, second eigenvalues and why their relevant to regularizations. This detour was relevant to CMA-ES because this is the only method capable of handling ``tricky'' objective functions, which may exhibit non-linearity, are multimodal, are non-smooth, etc.
+
+Our discussion then drifted toward learning what happens when our core assumptions -- the Identityless and Independence Assumptions -- were relaxed. This discussion transitioned into another discussion concerned with the generation of $\mathbb{P}^{(M)}$, the mass matrix. We learned about the greatly complicated and inefficient VSEA and how it inspired its speedy relative, the Series Method. Performances of each algorithm were provided when available. Toward the end of our discussion on the Series Method, we had the necessary knowledge to learn more about how we may relax the Independence Assumption, providing two approaches: the Quick-and-Dirty Approach and the Formal Approach.
+
+The complexities of all methods, when available, were listed in the ``Summary of Methods and Performance'' before we pivoted into learning about how any of these methods may be applied to real-world scenarios. Our applications were: ``Society, Citizens, Income, GDP/Welfare,'' ``Company, Employees, Wage, Profit,'' ``National Economy, Citizens, Rich-Poor, Wealth'' and `` Nation, Genomes, Income, Wealth.'' We provided a clear means of applying the mathematical machinery developed earlier to all application contexts. We concluded our discussion of applications with a generalization of all possible applications.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Future Research}
+Future research should concern itself with the optimization of each algorithm's complexity, particularly the CMA-ES, as its exact runtime, given any of the mentioned regularizations or objective functions, is unknown to the author. Parallelization of methods other than GI should be explored. Other linear objective functions should be explored so LP can return more informative results. More efficient algorithms that can handle the ``tricky'' objective functions and regularizations mentioned in this paper should also be developed.
+
+With specific regards to the generation of $\mathbb{P}^{(M)}$, connections should be drawn to the field of analytic combinatorics. The literature currently contains plenty of information regarding $n$-Chamber Ehrenfest Models, for small $n$, usually $n \in \{2,3\}$, but what is needed to potentially optimize the runtime complexity of generating $\mathbb{P}^{(M)}$ is research regarding $n$-Chamber Completely-Connected Ehrenfest Models, where $n > 3$, all $n$ chambers are connected to one another, and no particle is forced to move between chambers between time steps with some probability. Perhaps the runtime of generating $\mathbb{P}^{(M)}$ can be lessened to an even greater extent by abstracting the space of population sizes (values for $N$) away from solely discrete spaces, into the continuum.
+
+\pagebreak
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\section{Appendix}
+This section lists all algorithms mentioned in this paper, coded in Python 2.7.13. All code can be accessed online on GitHub at:
+
+\begin{center}
+    \url{https://github.com/kpeluso/thesis/tree/master/Clean}
+\end{center}
+
+% To insert Python code into LaTeX: \url{https://tex.stackexchange.com/questions/83882/how-to-highlight-python-syntax-in-latex-listings-lstinputlistings-command}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{bS}
+\pythonexternal{python_code/bS_clean.py}
+\pagebreak
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{rS}
+\pythonexternal{python_code/rS_clean.py}
+\pagebreak
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{brS}
+\pythonexternal{python_code/brS_clean.py}
+\pagebreak
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{LP}
+\pythonexternal{python_code/LP_clean.py}
+\pagebreak
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{NRS}
+\pythonexternal{python_code/NRS_clean.py}
+\pagebreak
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{GRS}
+\pythonexternal{python_code/GRS_clean.py}
+\pagebreak
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{GI}
+\pythonexternal{python_code/GI_clean.py}
+\pagebreak
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{CMA-ES}
+\pythonexternal{python_code/CMAES_clean.py}
+\pagebreak
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{VSEA}
+\pythonexternal{python_code/VSEA_clean.py}
+\pagebreak
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Series Method}
+\pythonexternal{python_code/Series_clean.py}
+\pagebreak
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Helper Functions}
+\pythonexternal{python_code/HELPERS_clean.py}
+\pagebreak
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Graphing Code}
+\pythonexternal{python_code/REALTIME_clean.py}
+\pagebreak
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\subsection{Timeout Helper Function}
+\pythonexternal{python_code/TIMEOUT_clean.py}
+\pagebreak
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+\section{Bibliography}
+\printbibliography
+
+\end{document}
+
