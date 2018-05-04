@@ -1,7 +1,7 @@
 from HELPERS_clean import TOL, np, corrEv, genStat, listMatch
 from brS_clean import brS
 
-def GI(n, pi, iters=float('inf'), tol=TOL):
+def GI(n, pi, maxIters=float('inf'), tol=TOL):
 	'''
 	INPUT:
 		n :: Integer
@@ -18,7 +18,7 @@ def GI(n, pi, iters=float('inf'), tol=TOL):
 		output[:,col] = np.transpose(genStat(n))
 	ev = corrEv(output)
 	indices = range(n)
-	while not listMatch(np.dot(output, ev), pi) and iters > 0: # s1, loop
+	while not listMatch(np.dot(output, ev), pi) and maxIters > 0: # s1, loop
 		# s2, isolate
 		alter = np.random.choice(indices, size=[2], replace=False).astype(int)
 		alter = np.array([min(alter), max(alter)]) # sort in order of lowest to highest
@@ -43,6 +43,6 @@ def GI(n, pi, iters=float('inf'), tol=TOL):
 		output[alter[0]][alter[1]] = submat[0][1]
 		output[alter[1]][alter[1]] = submat[1][1]
 		ev = corrEv(output)
-		iters -= 1
+		maxIters -= 1
 	return output
 
