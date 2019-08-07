@@ -3,8 +3,6 @@ from HELPERS_clean import TOL, np, resMat, corrEv, p22p1, genStat, listMatch
 def rS(n, pi, iters=float('inf'), tol=TOL):
 	'''
 	INPUT:
-		N :: Integer
-			# population size
 		n :: Integer
 			# number of bins
 		pi :: NPArray<Float>

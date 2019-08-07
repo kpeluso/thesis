@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.special import comb
 
-TOL = 0.01
+TOL = 0.0001
 
 p22p1 = lambda p2,pi: 1.0 - (1.0 - p2)*(pi[1]/pi[0]) # proof of formula given in rough draft of thesis
 
